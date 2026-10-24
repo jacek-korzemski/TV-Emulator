@@ -1,6 +1,6 @@
 ### AI Disclaimer 🔥🤖🔥🤖🔥🤖🔥
 
-Aplikacja jest w 100% vibe-code'owana. Nie mam zielonego pojęcia co jest w kodzie. Wiedziałem czego wymagam od aplikacji, rozumiałem napotkane problemy i próbowałem się jasno agentom tłumaczyć co jest źle, dlaczego i żeby to ogarnęli. **Nie jest to mój projekt do portfolio**. Jest to zabawka zrobiona na zajawce którą chcę się podzielić, gdyby ktoś potrzebował czegoś takiego. 
+Aplikacja jest w 100% vibe-code'owana. Nie mam zielonego pojęcia co jest w kodzie. Wiedziałem czego wymagam od aplikacji, rozumiałem napotkane problemy i próbowałem jasno agentom tłumaczyć co jest źle, dlaczego ma być tak a nie inaczej i żeby to ogarnęli. **Nie jest to mój projekt do portfolio**. Jest to zabawka zrobiona na zajawce którą chcę się podzielić, gdyby ktoś potrzebował czegoś takiego. 
 
 ---
 
