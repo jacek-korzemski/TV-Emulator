@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>TV Emulator video plane</title>
+<style>
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+body { position: relative; }
+video { position: absolute; inset: 0; z-index: 0; display: block; width: 100%; height: 100%; object-fit: fill; background: #000; }
+#shade-plane { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; transform-origin: 0 0; }
+#shade-plane > div { position: absolute; pointer-events: none; }
+</style>
+<script src="/__emulator/vendor/codem-isoboxer.min.js"></script>
+<script src="/__emulator/vendor/shaka-player.compiled.js"></script>
+</head>
+<body>
+<video id="plane" playsinline></video>
+<div id="shade-plane"></div>
+<script src="/__emulator/videoplane.js"></script>
+</body>
+</html>

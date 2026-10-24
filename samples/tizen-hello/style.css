@@ -1,0 +1,61 @@
+html, body {
+  margin: 0;
+  background: #14161c;
+  color: #f4f1ea;
+  font-family: sans-serif;
+}
+
+.screen {
+  box-sizing: border-box;
+  width: 1920px;
+  height: 1080px;
+  padding: 64px;
+}
+
+h1 {
+  margin: 0 0 24px;
+  font-size: 72px;
+  font-weight: normal;
+}
+
+.info {
+  margin: 0 0 28px;
+  font-size: 32px;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
+.flex,
+.grid {
+  margin-top: 28px;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex div,
+.grid div {
+  width: 220px;
+  height: 110px;
+  margin: 0 16px 0 0;
+  background: #3d6f9a;
+  font-size: 28px;
+  line-height: 110px;
+  text-align: center;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 220px 220px 220px;
+  grid-gap: 16px;
+}
+
+.grid div {
+  margin: 0;
+  background: #2f6b4f;
+}
+
+.probe-gap {
+  gap: 20px;
+}

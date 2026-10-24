@@ -1,0 +1,33 @@
+{
+  "id": "tizen-2022",
+  "label": "Samsung Tizen 6.5 (2022)",
+  "platform": "tizen",
+  "engine": "chromium-85",
+  "player": "avplay",
+  "userAgent": "Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.5) AppleWebKit/537.36 (KHTML, like Gecko) 85.0.4183.93/6.5 TV Safari/537.36",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "6.5",
+  "keys": {
+    "back": 10009,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "QE55QN90B",
+    "modelCode": "22_PONTUS_QLED",
+    "firmware": "T-PTMDEUC-1400.0",
+    "duid": "EMULATOR-TIZEN-2022",
+    "uhd": true,
+    "brand": "Samsung"
+  }
+}

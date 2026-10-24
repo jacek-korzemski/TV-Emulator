@@ -1,0 +1,89 @@
+<Window x:Class="TvEmulator.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="TV Emulator"
+        Height="700"
+        Width="760"
+        MinHeight="560"
+        MinWidth="640"
+        WindowStartupLocation="CenterScreen"
+        Background="#1B1D22"
+        Foreground="#F3F1EA"
+        FontFamily="Segoe UI"
+        FontSize="14">
+  <DockPanel>
+    <Border x:Name="Footer" DockPanel.Dock="Bottom" Background="#121418" Padding="20,14">
+      <DockPanel>
+        <Button x:Name="StartButton" DockPanel.Dock="Right" Content="Uruchom" MinWidth="140" Margin="16,0,0,0"
+                Padding="18,10" FontSize="16" FontWeight="SemiBold"
+                Background="#F2C14E" Foreground="#1B1D22" BorderThickness="0" Cursor="Hand"
+                Click="StartClick"/>
+        <TextBlock x:Name="StatusText" TextWrapping="Wrap" VerticalAlignment="Center"
+                   Foreground="#C8C4B8" Text="Wybierz profil oraz katalog albo adres aplikacji."/>
+      </DockPanel>
+    </Border>
+
+    <Grid x:Name="SettingsPanel" Margin="28">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+
+      <TextBlock Grid.Row="0" Text="Emulator Smart TV" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,6"/>
+      <TextBlock Grid.Row="1" Text="Po starcie ekran przechodzi w pełny obraz 16:9. Sterujesz pilotem, nie myszą."
+                 Foreground="#C8C4B8" TextWrapping="Wrap" Margin="0,0,0,22"/>
+
+      <StackPanel Grid.Row="2" Margin="0,0,0,14">
+        <TextBlock Text="Profil telewizora" Margin="0,0,0,6"/>
+        <ComboBox x:Name="ProfileBox" SelectionChanged="ProfileChanged" Padding="8,4" MinHeight="52"
+                  VerticalContentAlignment="Center">
+          <ComboBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Margin="0,1">
+                <TextBlock Text="{Binding Label}"/>
+                <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="#6E6A60"/>
+              </StackPanel>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </StackPanel>
+
+      <StackPanel Grid.Row="3" Margin="0,0,0,14">
+        <TextBlock Text="Aplikacja — katalog z index.html albo adres https://" Margin="0,0,0,6"/>
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="Przeglądaj" Margin="8,0,0,0" Padding="14,6"
+                  Click="BrowseClick" Background="#343842" Foreground="#F3F1EA" BorderThickness="0"/>
+          <TextBox x:Name="DirectoryBox" Padding="8,6" Background="#262A31" Foreground="#F3F1EA" BorderThickness="0"/>
+        </DockPanel>
+      </StackPanel>
+
+      <StackPanel Grid.Row="4" Margin="0,0,0,14">
+        <TextBlock Text="Monitor" Margin="0,0,0,6"/>
+        <ComboBox x:Name="MonitorBox" Padding="8,6"/>
+      </StackPanel>
+
+      <StackPanel Grid.Row="5" Margin="0,4,0,16">
+        <CheckBox x:Name="PointerBox" Content="Wskaźnik magic remote (kursor widoczny)" Foreground="#F3F1EA"/>
+        <CheckBox x:Name="DebugBox" IsChecked="True" Margin="0,8,0,0"
+                  Content="Zapis diagnostyczny do logs/session-….log" Foreground="#F3F1EA"/>
+      </StackPanel>
+
+      <StackPanel Grid.Row="6">
+        <TextBlock x:Name="LimitsText" TextWrapping="Wrap" Foreground="#C8C4B8" Margin="0,0,0,16"/>
+        <TextBlock TextWrapping="Wrap" Foreground="#9A968C" LineHeight="22">
+          Strzałki i Enter zostają. Esc to Back. F1–F4 to kolory.
+          Pad: krzyżak, A = Enter, B = Back, LB/RB/X/Y = kolory.
+          Ctrl+Shift+Q wraca do ustawień.
+        </TextBlock>
+      </StackPanel>
+    </Grid>
+
+    <TextBlock x:Name="SessionHint" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Top"
+               Margin="0,28,0,0" FontSize="20" Text="Nie widać obrazu silnika. Ctrl+Shift+Q wraca do ustawień."/>
+  </DockPanel>
+</Window>

@@ -1,0 +1,10 @@
+bin/
+obj/
+.vs/
+*.user
+logs/*
+!logs/.gitkeep
+engines/chromium-*/
+engines/electron-*/
+engines/downloads/
+engines/spike-results.json

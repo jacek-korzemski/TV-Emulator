@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>alpha spike</title>
+<style>
+html, body { margin: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; }
+#bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+}
+#mark {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  background: #ffffff;
+}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="mark"></div>
+<script>
+var frames = 0;
+var started = Date.now();
+function tick() {
+  frames += 1;
+  if (Date.now() - started < 1000) {
+    requestAnimationFrame(tick);
+  } else {
+    window.__fps = frames;
+  }
+}
+requestAnimationFrame(tick);
+var bar = document.getElementById("bar");
+bar.style.transition = "opacity 0.3s linear";
+setTimeout(function () { bar.style.opacity = "1"; }, 200);
+</script>
+</body>
+</html>

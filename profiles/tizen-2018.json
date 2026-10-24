@@ -1,0 +1,33 @@
+{
+  "id": "tizen-2018",
+  "label": "Samsung Tizen 4.0 (2018)",
+  "platform": "tizen",
+  "engine": "chromium-56",
+  "player": "avplay",
+  "userAgent": "Mozilla/5.0 (SMART-TV; LINUX; Tizen 4.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 TV Safari/537.36",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "4.0",
+  "keys": {
+    "back": 10009,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": ["Proxy"] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "UE55NU7400",
+    "modelCode": "18_KANTN_UHD",
+    "firmware": "T-KTNUDEUC-1300.1",
+    "duid": "EMULATOR-TIZEN-2018",
+    "uhd": true,
+    "brand": "Samsung"
+  }
+}

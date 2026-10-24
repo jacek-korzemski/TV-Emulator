@@ -1,0 +1,33 @@
+{
+  "id": "webos-4",
+  "label": "LG webOS TV 4.x (2018–2019)",
+  "platform": "webos",
+  "engine": "chromium-53",
+  "player": "edge",
+  "userAgent": "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.34 Safari/537.36 WebAppManager",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "4.0",
+  "keys": {
+    "back": 461,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "OLED55C8PLA",
+    "modelCode": "OLED55C8PLA",
+    "firmware": "05.80.03",
+    "duid": "EMULATOR-WEBOS-4",
+    "uhd": true,
+    "brand": "LG"
+  }
+}

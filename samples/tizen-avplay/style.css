@@ -1,0 +1,44 @@
+html, body {
+  margin: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: transparent;
+  font-family: sans-serif;
+  color: #fff;
+}
+
+#av-player {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+}
+
+.bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 32px 64px;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 1;
+  transition: opacity 0.3s linear;
+}
+
+.title {
+  font-size: 44px;
+  font-weight: bold;
+}
+
+.status {
+  margin-top: 12px;
+  font-size: 30px;
+}
+
+.help {
+  margin-top: 12px;
+  font-size: 24px;
+  color: #ccc;
+}

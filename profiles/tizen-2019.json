@@ -1,0 +1,33 @@
+{
+  "id": "tizen-2019",
+  "label": "Samsung Tizen 5.0 (2019)",
+  "platform": "tizen",
+  "engine": "chromium-63",
+  "player": "avplay",
+  "userAgent": "Mozilla/5.0 (SMART-TV; LINUX; Tizen 5.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/5.0 TV Safari/537.36",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "5.0",
+  "keys": {
+    "back": 10009,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "UE55RU7400",
+    "modelCode": "19_KANTS_UHD",
+    "firmware": "T-KTSUDEUC-1250.0",
+    "duid": "EMULATOR-TIZEN-2019",
+    "uhd": true,
+    "brand": "Samsung"
+  }
+}
