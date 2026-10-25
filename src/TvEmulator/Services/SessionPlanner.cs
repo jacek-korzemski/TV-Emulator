@@ -5,6 +5,13 @@ namespace TvEmulator.Services;
 
 public static class SessionPlanner
 {
+    public const string BootPath = "/__emulator/boot.html";
+    public const string BootReportPath = "/__emulator/boot";
+
+    public static bool UsesBootGate(EngineBuild engine) =>
+        !string.Equals(engine.Kind, "electron", StringComparison.Ordinal)
+        && !string.Equals(engine.Kind, "firefox", StringComparison.Ordinal);
+
     public static IReadOnlyList<string> Arguments(
         EngineBuild engine,
         TvProfile profile,
@@ -81,8 +88,14 @@ public static class SessionPlanner
             "--force-device-scale-factor=" + scaleText,
             "--user-agent=" + profile.UserAgent,
             "--window-position=" + rect.X + "," + rect.Y,
-            "--window-size=" + rect.Width + "," + rect.Height
+            "--window-size=" + rect.Width + "," + rect.Height,
+            "--test-type"
         };
+
+        // Removed around milestone 76. On later builds the switch is unknown and
+        // itself opens the unsupported-flag bar we are trying to avoid.
+        if (engine.Milestone < 76)
+            args.Add("--disable-infobars");
 
         if (engine.Args is not null)
             args.AddRange(engine.Args);
@@ -93,7 +106,7 @@ public static class SessionPlanner
             args.Add("--remote-debugging-port=9223");
         }
 
-        args.Add("--app=" + url);
+        args.Add("--app=http://127.0.0.1:" + port + BootPath);
         return args;
     }
 }

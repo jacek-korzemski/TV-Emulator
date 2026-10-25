@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private bool _hotkeyRegistered;
     private int _attachTicks;
     private bool _enginePlaced;
+    private bool _releasePagesOnFit = true;
     private PixelRect _stage;
     private double _settingsLeft;
     private double _settingsTop;
@@ -162,6 +163,7 @@ public partial class MainWindow : Window
 
             var engine = _engines.FirstOrDefault(item => item.Id == profile.Engine)
                 ?? throw new InvalidOperationException("Profil wskazuje silnik, którego nie ma w engines/builds.json.");
+            _releasePagesOnFit = !SessionPlanner.UsesBootGate(engine);
             var exe = Catalog.LocateEngine(_root, engine)
                 ?? throw new InvalidOperationException("Brak pliku silnika dla " + engine.Id + ". Uruchom tools/fetch-engines.ps1.");
 
@@ -334,7 +336,10 @@ public partial class MainWindow : Window
     {
         if (!engine.Fitted)
             return;
-        _server?.StageReady();
+        // Chromium opens the app from the boot gate, after its own bars are gone.
+        // Firefox and Electron still release the page once the frame fits.
+        if (_releasePagesOnFit)
+            _server?.StageReady();
         if (_attachTimer is not null)
             _attachTimer.Interval = TimeSpan.FromSeconds(1);
     }

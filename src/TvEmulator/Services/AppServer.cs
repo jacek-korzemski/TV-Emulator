@@ -50,6 +50,50 @@ public sealed class AppServer : IDisposable
         "<object\\b(?=[^>]*\\btype\\s*=\\s*[\"']?video/broadcast\\b)[^>]*>",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    private const string BootPage =
+        """
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset="utf-8">
+        <style>
+        html, body { margin: 0; background: #000; overflow: hidden; width: 100%; height: 100%; }
+        </style>
+        </head>
+        <body>
+        <script>
+        (function () {
+          function tick() {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/__emulator/boot", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.onload = function () {
+              var data = {};
+              try {
+                data = JSON.parse(xhr.responseText || "{}");
+              } catch (ignore) {
+              }
+              if (data.url) {
+                location.replace(data.url);
+                return;
+              }
+              setTimeout(tick, 150);
+            };
+            xhr.onerror = function () {
+              setTimeout(tick, 200);
+            };
+            xhr.send(JSON.stringify({ w: window.innerWidth, h: window.innerHeight }));
+          }
+          tick();
+        })();
+        </script>
+        </body>
+        </html>
+        """;
+
+    private const int BootTolerancePx = 8;
+    private const long BootGiveUpMs = 5000;
+
     private HttpListener? _listener;
     private Thread? _thread;
     private readonly HttpClient _http = new(new HttpClientHandler { AllowAutoRedirect = false })
@@ -68,7 +112,12 @@ public sealed class AppServer : IDisposable
     private string _shim = "";
     private string _shimDirectory = "";
     private readonly object _appInfoGate = new();
+    private readonly object _bootGate = new();
     private readonly ManualResetEventSlim _stageReady = new(true);
+    private string _startPath = "/";
+    private long _bootSeenAt;
+    private int _bootMatches;
+    private bool _bootReleased;
     private int _pending;
 
     private static readonly TimeSpan StageWait = TimeSpan.FromSeconds(3);
@@ -77,10 +126,20 @@ public sealed class AppServer : IDisposable
     public AvplayBridge Avplay { get; } = new();
 
     /// <summary>
-    /// Holds HTML documents until <see cref="StageReady"/> (or a few seconds), so the app lays out
-    /// at the profile viewport instead of the engine window's first, framed size.
+    /// Holds app HTML until <see cref="StageReady"/> (or a few seconds). Chromium calls
+    /// <see cref="StageReady"/> from the boot gate once the page viewport matches the profile.
+    /// Other engines call it when the window frame has been fitted.
     /// </summary>
-    public void HoldPages() => _stageReady.Reset();
+    public void HoldPages()
+    {
+        _stageReady.Reset();
+        lock (_bootGate)
+        {
+            _bootSeenAt = 0;
+            _bootMatches = 0;
+            _bootReleased = false;
+        }
+    }
 
     public void StageReady() => _stageReady.Set();
     public event Action? ExitRequested;
@@ -95,6 +154,7 @@ public sealed class AppServer : IDisposable
         _appDirectory = source.Directory ?? "";
         _page = source.Page;
         _origin = source.Origin;
+        _startPath = NormalizeStartPath(source.LocalStartPath);
         _profile = profile;
         _pointerEnabled = pointerEnabled;
         _debug = debug;
@@ -230,6 +290,18 @@ public sealed class AppServer : IDisposable
     private void Handle(HttpListenerContext context)
     {
         var path = context.Request.Url?.AbsolutePath ?? "/";
+        if (path == SessionPlanner.BootPath && context.Request.HttpMethod == "GET")
+        {
+            Write(context, 200, "text/html; charset=utf-8", Encoding.UTF8.GetBytes(BootPage));
+            return;
+        }
+
+        if (path == SessionPlanner.BootReportPath && context.Request.HttpMethod == "POST")
+        {
+            HandleBoot(context);
+            return;
+        }
+
         if (path == "/__emulator/exit" && context.Request.HttpMethod == "POST")
         {
             Write(context, 204, "text/plain", []);
@@ -584,6 +656,8 @@ public sealed class AppServer : IDisposable
         var op = context.Request.QueryString["op"] ?? "";
         var id = context.Request.QueryString["id"] ?? "";
         var initDataType = context.Request.QueryString["initDataType"];
+        var keySystem = context.Request.QueryString["keySystem"];
+        var sessionType = context.Request.QueryString["sessionType"];
         using var buffer = new MemoryStream();
         context.Request.InputStream.CopyTo(buffer);
         var bytes = buffer.ToArray();
@@ -600,9 +674,110 @@ public sealed class AppServer : IDisposable
         };
         if (!string.IsNullOrEmpty(initDataType))
             command["initDataType"] = initDataType;
+        if (!string.IsNullOrEmpty(keySystem))
+            command["keySystem"] = keySystem;
+        if (!string.IsNullOrEmpty(sessionType))
+            command["sessionType"] = sessionType;
         return Avplay.Submit(command)
             ? new JsonObject { ["ok"] = true }
             : new JsonObject { ["ok"] = false, ["error"] = "InvalidValuesError" };
+    }
+
+    private void HandleBoot(HttpListenerContext context)
+    {
+        var width = 0;
+        var height = 0;
+        try
+        {
+            using var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8);
+            var text = reader.ReadToEnd();
+            if (text.Length > 0)
+            {
+                var node = JsonNode.Parse(text) as JsonObject;
+                width = ReadPx(node?["w"]);
+                height = ReadPx(node?["h"]);
+            }
+        }
+        catch (JsonException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        var decision = DecideBoot(width, height);
+        if (decision.GiveUp)
+            Log?.Invoke("boot give-up viewport=" + width + "x" + height + " expected=" + decision.Expected);
+        if (decision.Release)
+            StageReady();
+        WriteJson(context, new JsonObject { ["url"] = decision.Url });
+    }
+
+    private readonly record struct BootDecision(string Url, bool Release, bool GiveUp, string Expected);
+
+    private BootDecision DecideBoot(int width, int height)
+    {
+        var viewport = _profile?.Viewport;
+        var expectedWidth = viewport?.Width ?? 0;
+        var expectedHeight = viewport?.Height ?? 0;
+        var matches = expectedWidth > 0 && expectedHeight > 0
+            && Math.Abs(width - expectedWidth) <= BootTolerancePx
+            && Math.Abs(height - expectedHeight) <= BootTolerancePx;
+        var expected = expectedWidth + "x" + expectedHeight;
+
+        lock (_bootGate)
+        {
+            var now = Environment.TickCount64;
+            if (_bootSeenAt == 0)
+                _bootSeenAt = now;
+
+            if (_bootReleased)
+                return new BootDecision(_startPath, false, false, expected);
+
+            if (matches)
+                _bootMatches++;
+            else
+                _bootMatches = 0;
+
+            if (_bootMatches >= 2)
+            {
+                _bootReleased = true;
+                return new BootDecision(_startPath, true, false, expected);
+            }
+
+            if (now - _bootSeenAt >= BootGiveUpMs)
+            {
+                _bootReleased = true;
+                return new BootDecision(_startPath, true, true, expected);
+            }
+
+            return new BootDecision("", false, false, expected);
+        }
+    }
+
+    private static string NormalizeStartPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return "/";
+        return path.StartsWith('/') ? path : "/" + path;
+    }
+
+    private static int ReadPx(JsonNode? node)
+    {
+        if (node is null)
+            return 0;
+        try
+        {
+            return (int)Math.Round(node.GetValue<double>());
+        }
+        catch (InvalidOperationException)
+        {
+            return 0;
+        }
+        catch (FormatException)
+        {
+            return 0;
+        }
     }
 
     private static void WriteJson(HttpListenerContext context, JsonNode body) =>

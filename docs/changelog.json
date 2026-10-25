@@ -2,6 +2,18 @@
   "entries": [
     {
       "date": "2026-10-25",
+      "title": "PlayReady through Edge and a clean Chromium start",
+      "items": [
+        "Profiles that play through the Edge picture now take PlayReady as well as Widevine. A page that only offers a PlayReady license, such as Polsat Box Go on Titan, can start that stream.",
+        "Edge uses its software PlayReady decoder so the picture stays in the video hole. Hardware PlayReady would draw into a protected overlay the color key cannot show.",
+        "The page reports PlayReady variants as supported, so they stay in the catalog the same way Widevine variants already do.",
+        "Closing one stream and opening the next no longer stalls on a license or append error left over from the stream that just ended.",
+        "Chromium profiles sit on a black screen and load the app only after the window matches the TV size, or after a few seconds if it never does. Firefox and Electron open the page as soon as the window frame fits.",
+        "The yellow unsupported-flag bar, the translate prompt, password save, notification prompts, and the restore-after-crash banner stay off."
+      ]
+    },
+    {
+      "date": "2026-10-25",
       "title": "Startup settings and Edge video for Titan and Panasonic",
       "items": [
         "Ustawienia remembers a default app, a folder or an http(s) address, and fills it in at every start. Uncheck TV profiles you do not use and they leave the list; profiles added later stay visible until you hide them.",

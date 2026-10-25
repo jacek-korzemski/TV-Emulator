@@ -225,7 +225,8 @@ public class AvplayTests
         Assert.Contains("defineValue(global, \"MediaSource\"", playback);
         Assert.Contains("defineValue(navigatorObject, \"requestMediaKeySystemAccess\"", playback);
         Assert.Contains("encryptionScheme = \"cenc\"", playback);
-        Assert.Contains("keySystem !== \"com.widevine.alpha\"", playback);
+        Assert.Contains("isPlayReadyKeySystem", playback);
+        Assert.Contains("isEdgeKeySystem", playback);
         Assert.Contains("supported: true", playback);
         Assert.Contains("MediaKeySystemAccess.prototype.getConfiguration", playback);
         Assert.Contains("if (nativeSetMediaKeys)", playback);
@@ -237,6 +238,7 @@ public class AvplayTests
         Assert.Contains("emit('mse-ready'", openMse);
         Assert.DoesNotContain("requestMediaKeySystemAccess", openMse);
         Assert.Contains("const ensureWidevine", plane);
+        Assert.Contains("com.microsoft.playready.software", plane);
         Assert.DoesNotContain("com.widevine.alpha'] =", plane);
         var seekMseAt = plane.IndexOf("const seekMse =", StringComparison.Ordinal);
         var seekToAt = plane.IndexOf("const seekTo =", StringComparison.Ordinal);
@@ -246,6 +248,22 @@ public class AvplayTests
         Assert.Contains("pendingMseTime = target", seekMse);
         Assert.DoesNotContain("setTimeout", seekMse);
         Assert.Contains("played.catch(() => {})", plane);
+    }
+
+    [Fact]
+    public void ClosedStreamErrorsDoNotFailTheNextMediaSourceOpen()
+    {
+        var root = RepoPaths.Root();
+        var shim = File.ReadAllText(Path.Combine(root, "shims", "platform.js"));
+        var plane = File.ReadAllText(Path.Combine(root, "shims", "videoplane.js"));
+        var errorAt = shim.IndexOf("evt.type === \"mse-error\"", StringComparison.Ordinal);
+        Assert.True(errorAt > 0);
+        var handler = shim.Substring(errorAt, 700);
+        var guardAt = handler.IndexOf("evt.op === \"open\"", StringComparison.Ordinal);
+        var settleAt = handler.IndexOf("settle(\"mse-ready\", false, failure)", StringComparison.Ordinal);
+        Assert.True(guardAt >= 0 && settleAt > guardAt);
+        Assert.Contains("!evt.op || evt.op === \"open\"", handler);
+        Assert.Contains("message: 'missing media key session'", plane);
     }
 
     [Fact]

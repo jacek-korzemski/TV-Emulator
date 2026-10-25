@@ -1984,6 +1984,12 @@
         if (extra && extra.initDataType) {
           query += "&initDataType=" + encodeURIComponent(extra.initDataType);
         }
+        if (extra && extra.keySystem) {
+          query += "&keySystem=" + encodeURIComponent(extra.keySystem);
+        }
+        if (extra && extra.sessionType) {
+          query += "&sessionType=" + encodeURIComponent(extra.sessionType);
+        }
         xhr.open("POST", query, true);
         xhr.onload = function () {
           if (xhr.status >= 200 && xhr.status < 300) {
@@ -2648,10 +2654,25 @@
           return Promise.resolve();
         });
       }
+      // Chrome for Testing has neither CDM. Edge does: Widevine, and software
+      // PlayReady. A Titan page (Polsat Box Go classifies that UA as Saphi)
+      // is handed only a PlayReady license URL, so both systems have to resolve.
+      function isWidevineKeySystem(keySystem) {
+        return keySystem === "com.widevine.alpha";
+      }
+
+      function isPlayReadyKeySystem(keySystem) {
+        return typeof keySystem === "string" && keySystem.indexOf("playready") !== -1;
+      }
+
+      function isEdgeKeySystem(keySystem) {
+        return isWidevineKeySystem(keySystem) || isPlayReadyKeySystem(keySystem);
+      }
+
       defineValue(navigatorObject, "requestMediaKeySystemAccess", function (keySystem, configs) {
-        if (keySystem === "com.widevine.alpha") {
+        if (isEdgeKeySystem(keySystem)) {
           var requested = configs && configs.length ? configs[0] : {};
-          return Promise.resolve(fakeAccess(requested));
+          return Promise.resolve(fakeAccess(keySystem, requested));
         }
         if (nativeRequest) {
           return nativeRequest.apply(navigatorObject, arguments);
@@ -2700,30 +2721,30 @@
         return copy;
       }
 
-      function fakeAccess(requested) {
+      function fakeAccess(keySystem, requested) {
         var config = copyFields(requested);
         if (!config.sessionTypes) {
           config.sessionTypes = ["temporary"];
         }
         return {
-          keySystem: "com.widevine.alpha",
+          keySystem: keySystem,
           __tvEme: true,
           getConfiguration: function () { return configurationWithScheme(config); },
-          createMediaKeys: function () { return Promise.resolve(fakeKeys()); }
+          createMediaKeys: function () { return Promise.resolve(fakeKeys(keySystem)); }
         };
       }
 
-      function fakeKeys() {
+      function fakeKeys(keySystem) {
         return {
           __tvEme: true,
-          createSession: function (type) { return fakeSession(type || "temporary"); },
+          createSession: function (type) { return fakeSession(type || "temporary", keySystem); },
           setServerCertificate: function (certificate) {
             var bytes = toArrayBuffer(certificate);
             if (!bytes.byteLength) {
               return Promise.resolve(true);
             }
             var wait = arm("cert:cdm");
-            postBinary("cert", "cdm", bytes).catch(function (error) {
+            postBinary("cert", "cdm", bytes, { keySystem: keySystem }).catch(function (error) {
               settle("cert:cdm", false, error);
             });
             return wait.then(function (evt) { return !evt || evt.ok !== false; });
@@ -2732,7 +2753,7 @@
         };
       }
 
-      function fakeSession(type) {
+      function fakeSession(type, keySystem) {
         var session = {
           sessionId: "",
           sessionType: type,
@@ -2746,7 +2767,11 @@
         sessions[session._id] = session;
         session.generateRequest = function (initDataType, initData) {
           var wait = arm("generate:" + session._id);
-          postBinary("generate", session._id, toArrayBuffer(initData), { initDataType: initDataType || "cenc" }).catch(function (error) {
+          postBinary("generate", session._id, toArrayBuffer(initData), {
+            initDataType: initDataType || "cenc",
+            keySystem: keySystem || "",
+            sessionType: type || "temporary"
+          }).catch(function (error) {
             settle("generate:" + session._id, false, error);
           });
           return wait.then(function (evt) {
@@ -2774,7 +2799,7 @@
 
       // Chromium 66+ answers decodingInfo itself. With no CDM that answer is
       // supported:false, and Shaka drops the variant even after a key-system
-      // access is attached. Edge is the decoder, so Widevine stays supported.
+      // access is attached. Edge is the decoder, so Widevine and PlayReady stay supported.
       if (!navigatorObject.mediaCapabilities) {
         navigatorObject.mediaCapabilities = {};
       }
@@ -2783,7 +2808,7 @@
       defineValue(navigatorObject, "mediaCapabilities", capabilities);
       defineValue(capabilities, "decodingInfo", function (config) {
         var keyConfig = config && config.keySystemConfiguration;
-        if (!keyConfig || keyConfig.keySystem !== "com.widevine.alpha") {
+        if (!keyConfig || !isEdgeKeySystem(keyConfig.keySystem)) {
           if (nativeDecodingInfo) {
             try {
               return nativeDecodingInfo.apply(capabilities, arguments);
@@ -2826,7 +2851,7 @@
           supported: true,
           powerEfficient: true,
           smooth: true,
-          keySystemAccess: fakeAccess(requested)
+          keySystemAccess: fakeAccess(keyConfig.keySystem, requested)
         });
       });
     }
@@ -2839,7 +2864,13 @@
         settle("mse-ready", true, evt);
       } else if (evt.type === "mse-error") {
         var failure = new Error(evt.message || "media plane failed");
-        settle("mse-ready", false, failure);
+        // Append and license errors from the stream being closed sit in the same
+        // queue as the next open. Failing mse-ready here never fires sourceopen,
+        // so the page waits out ENGINE_ERR_MEDIA_KEYS_NOT_RESPONDING. Only an open
+        // failure, or a plane that never started, rejects the pending source.
+        if (!evt.op || evt.op === "open") {
+          settle("mse-ready", false, failure);
+        }
         if (evt.op === "cert") {
           settle("cert:cdm", false, failure);
         }

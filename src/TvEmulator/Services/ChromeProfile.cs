@@ -18,7 +18,16 @@ public static class ChromeProfile
         root["credentials_enable_service"] = false;
         var profile = root["profile"] as JsonObject ?? new JsonObject();
         profile["password_manager_enabled"] = false;
+        profile["exited_cleanly"] = true;
+        profile["exit_type"] = "Normal";
+        var content = profile["default_content_setting_values"] as JsonObject ?? new JsonObject();
+        content["notifications"] = 2;
+        content["popups"] = 2;
+        profile["default_content_setting_values"] = content;
         root["profile"] = profile;
+        var translate = root["translate"] as JsonObject ?? new JsonObject();
+        translate["enabled"] = false;
+        root["translate"] = translate;
         File.WriteAllText(prefsPath, root.ToJsonString());
     }
 }

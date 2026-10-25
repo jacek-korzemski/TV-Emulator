@@ -57,6 +57,53 @@ public class EmulatorTests
     }
 
     [Fact]
+    public async Task BootPageStaysUpUntilTheViewportIsFull()
+    {
+        var root = RepoPaths.Root();
+        var profile = Catalog.LoadProfiles(root).Single(item => item.Id == "tizen-2017");
+        using var server = new AppServer();
+        server.Start(root, Path.Combine(root, "samples", "tizen-hello"), profile, pointerEnabled: false);
+        server.HoldPages();
+
+        using var client = new HttpClient();
+        var boot = await client.GetStringAsync("http://127.0.0.1:" + server.Port + "/__emulator/boot.html")
+            .WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Contains("/__emulator/boot", boot);
+        Assert.Contains("location.replace", boot);
+        Assert.DoesNotContain("platform.js", boot);
+
+        var page = client.GetStringAsync("http://127.0.0.1:" + server.Port + "/");
+        await Task.Delay(300);
+        Assert.False(page.IsCompleted);
+
+        var width = profile.Viewport.Width;
+        var height = profile.Viewport.Height;
+        var shortened = await PostBoot(client, server.Port, width, height - 40);
+        Assert.Contains("\"url\":\"\"", shortened.Replace(" ", ""));
+        await Task.Delay(100);
+        Assert.False(page.IsCompleted);
+
+        var once = await PostBoot(client, server.Port, width, height);
+        Assert.Contains("\"url\":\"\"", once.Replace(" ", ""));
+        await Task.Delay(100);
+        Assert.False(page.IsCompleted);
+
+        var twice = await PostBoot(client, server.Port, width, height);
+        Assert.Contains("\"url\":\"/\"", twice.Replace(" ", ""));
+        Assert.Contains("/__emulator/platform.js", await page.WaitAsync(TimeSpan.FromSeconds(2)));
+    }
+
+    private static async Task<string> PostBoot(HttpClient client, int port, int width, int height)
+    {
+        using var body = new StringContent(
+            "{\"w\":" + width + ",\"h\":" + height + "}",
+            Encoding.UTF8,
+            "application/json");
+        using var response = await client.PostAsync("http://127.0.0.1:" + port + "/__emulator/boot", body);
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    [Fact]
     public void StripCssRemovesGapAndKeepsGridGap()
     {
         var css = "a{gap: 12px; grid-gap: 8px; margin: 1px;}";
@@ -161,7 +208,7 @@ public class EmulatorTests
             UserAgent = "TestAgent/1",
             Viewport = new Viewport { Width = 1920, Height = 1080 }
         };
-        var engine = new EngineBuild { Args = ["--no-sandbox"] };
+        var engine = new EngineBuild { Milestone = 47, Args = ["--no-sandbox"] };
         var args = SessionPlanner.Arguments(engine, profile, new PixelRect(10, 20, 1600, 900), 47911, @"C:\data dir");
         Assert.Contains("--user-data-dir=C:\\data dir", args);
         Assert.Contains("--user-agent=TestAgent/1", args);
@@ -171,14 +218,34 @@ public class EmulatorTests
         Assert.Contains("--force-device-scale-factor=0.8333", args);
         Assert.Contains("--disable-save-password-bubble", args);
         Assert.Contains("--disable-password-generation", args);
-        Assert.Equal("--app=http://127.0.0.1:47911/", args[^1]);
+        Assert.Contains("--test-type", args);
+        Assert.Contains("--disable-infobars", args);
+        Assert.Equal("--app=http://127.0.0.1:47911/__emulator/boot.html", args[^1]);
         var hosted = SessionPlanner.Arguments(engine, profile, new PixelRect(10, 20, 1600, 900), 47911, @"C:\data dir", "/player/index.html?x=1#home");
-        Assert.Equal("--app=http://127.0.0.1:47911/player/index.html?x=1#home", hosted[^1]);
+        Assert.Equal("--app=http://127.0.0.1:47911/__emulator/boot.html", hosted[^1]);
+        Assert.DoesNotContain("player/index.html", string.Join('\n', hosted));
         var debug = SessionPlanner.Arguments(engine, profile, new PixelRect(10, 20, 1600, 900), 47911, @"C:\data dir", debug: true);
         Assert.Contains("--remote-debugging-port=9223", debug);
         Assert.Contains("--enable-precise-memory-info", debug);
         Assert.DoesNotContain("--enable-precise-memory-info", args);
-        Assert.Equal("--app=http://127.0.0.1:47911/", debug[^1]);
+        Assert.Equal("--app=http://127.0.0.1:47911/__emulator/boot.html", debug[^1]);
+        var chromium85 = SessionPlanner.Arguments(
+            new EngineBuild { Milestone = 85, Args = ["--no-sandbox"] },
+            profile,
+            new PixelRect(10, 20, 1600, 900),
+            47911,
+            @"C:\data dir");
+        Assert.Contains("--test-type", chromium85);
+        Assert.DoesNotContain("--disable-infobars", chromium85);
+        Assert.Equal("--app=http://127.0.0.1:47911/__emulator/boot.html", chromium85[^1]);
+        var chromium122 = SessionPlanner.Arguments(
+            new EngineBuild { Milestone = 122 },
+            profile,
+            new PixelRect(10, 20, 1600, 900),
+            47911,
+            @"C:\data dir");
+        Assert.Contains("--test-type", chromium122);
+        Assert.DoesNotContain("--disable-infobars", chromium122);
         var firefox = SessionPlanner.Arguments(
             new EngineBuild { Kind = "firefox" },
             profile,
@@ -191,6 +258,14 @@ public class EmulatorTests
         Assert.Contains("-no-remote", firefox);
         Assert.DoesNotContain(firefox, argument => argument.Contains("remote-debugging-port", StringComparison.Ordinal));
         Assert.Equal("http://127.0.0.1:47911/", firefox[^1]);
+        var firefoxHosted = SessionPlanner.Arguments(
+            new EngineBuild { Kind = "firefox" },
+            profile,
+            new PixelRect(10, 20, 1600, 900),
+            47911,
+            @"C:\data dir",
+            "/player/index.html?x=1#home");
+        Assert.Equal("http://127.0.0.1:47911/player/index.html?x=1#home", firefoxHosted[^1]);
     }
 
     [Fact]
@@ -475,8 +550,14 @@ public class EmulatorTests
         var dir = Path.Combine(Path.GetTempPath(), "tv-emulator-prefs-" + Guid.NewGuid().ToString("N"));
         ChromeProfile.Prepare(dir);
         var json = File.ReadAllText(Path.Combine(dir, "Default", "Preferences"));
-        Assert.Contains("\"credentials_enable_service\":false", json.Replace(" ", ""));
-        Assert.Contains("\"password_manager_enabled\":false", json.Replace(" ", ""));
+        var compact = json.Replace(" ", "");
+        Assert.Contains("\"credentials_enable_service\":false", compact);
+        Assert.Contains("\"password_manager_enabled\":false", compact);
+        Assert.Contains("\"notifications\":2", compact);
+        Assert.Contains("\"popups\":2", compact);
+        Assert.Contains("\"exit_type\":\"Normal\"", compact);
+        Assert.Contains("\"exited_cleanly\":true", compact);
+        Assert.Contains("\"translate\":{\"enabled\":false}", compact);
         Assert.True(File.Exists(Path.Combine(dir, "First Run")));
     }
 

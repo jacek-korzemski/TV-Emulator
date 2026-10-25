@@ -47,6 +47,12 @@ public sealed class EngineSession : IDisposable
         foreach (var argument in arguments)
             start.ArgumentList.Add(argument);
 
+        // Unofficial Chromium snapshots show "Google API keys are missing" until these exist.
+        // Firefox and Electron ignore them.
+        start.Environment["GOOGLE_API_KEY"] = "tv-emulator";
+        start.Environment["GOOGLE_DEFAULT_CLIENT_ID"] = "tv-emulator";
+        start.Environment["GOOGLE_DEFAULT_CLIENT_SECRET"] = "tv-emulator";
+
         _process = Process.Start(start) ?? throw new InvalidOperationException("Nie udało się uruchomić silnika.");
         _process.EnableRaisingEvents = true;
         _process.Exited += (_, _) =>

@@ -928,9 +928,10 @@
     }
   });
 
-  // webOS keeps Shaka and its Widevine license RPC in the old Chromium. This
-  // plane only supplies the CDM and the decoder. PlayReady mapping stays on the
-  // Tizen path and is not used here.
+  // The page keeps Shaka and the license RPC in its own engine. This plane only
+  // supplies the CDM and the decoder. Widevine is the usual HTML path. PlayReady
+  // is software-only here: hardware PlayReady draws into a protected overlay that
+  // the color key cannot show. Tizen AVPlay still has its own PlayReady retry.
   let mseMode = false;
   let mseSource = null;
   let mseKeys = null;
@@ -1029,6 +1030,13 @@
     sessionTypes: ['temporary']
   });
 
+  const messageBytes = (message) => {
+    if (typeof message === 'string') {
+      return new TextEncoder().encode(message);
+    }
+    return message;
+  };
+
   const flushEme = async () => {
     const queued = pendingEme;
     pendingEme = [];
@@ -1038,9 +1046,9 @@
       if (command.op === 'cert') {
         await applyCertificate(command);
       } else if (command.op === 'generate') {
-        await generateWidevine(command);
+        await generateSession(command);
       } else if (command.op === 'update') {
-        await updateWidevine(command);
+        await updateSession(command);
       }
     }
   };
@@ -1090,6 +1098,23 @@
     video = replaceVideoElement(video);
   };
 
+  const playReadyMseConfig = (persistent) => ({
+    initDataTypes: ['cenc', 'keyids'],
+    audioCapabilities: [
+      { contentType: 'audio/mp4; codecs="mp4a.40.2"', robustness: '150' }
+    ],
+    videoCapabilities: [
+      { contentType: 'video/mp4; codecs="avc1.42E01E"', robustness: '150' },
+      { contentType: 'video/mp4; codecs="avc1.4d401f"', robustness: '150' },
+      { contentType: 'video/mp4; codecs="avc1.640028"', robustness: '150' }
+    ],
+    distinctiveIdentifier: 'optional',
+    persistentState: persistent ? 'required' : 'not-allowed',
+    sessionTypes: [persistent ? 'persistent-license' : 'temporary']
+  });
+
+  const isPlayReadySystem = (keySystem) => /playready/i.test(String(keySystem || ''));
+
   const createWidevine = async () => {
     let access = null;
     try {
@@ -1103,15 +1128,43 @@
     const keys = await access.createMediaKeys();
     await video.setMediaKeys(keys);
     mseKeys = keys;
+    emit('log', { text: 'mse cdm widevine' });
   };
 
-  // Clear streams never touch the CDM. A Widevine refusal must not block them.
+  const createPlayReady = async (sessionType) => {
+    const persistent = sessionType === 'persistent-license';
+    const systems = ['com.microsoft.playready.software', 'com.microsoft.playready.recommendation'];
+    let lastError = null;
+    for (const system of systems) {
+      try {
+        const access = await navigator.requestMediaKeySystemAccess(system, [playReadyMseConfig(persistent)]);
+        const keys = await access.createMediaKeys();
+        await video.setMediaKeys(keys);
+        mseKeys = keys;
+        emit('log', { text: 'mse cdm ' + system });
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError || new Error('playready cdm unavailable');
+  };
+
+  // Clear streams never touch the CDM. A CDM refusal must not block them.
   const ensureWidevine = async () => {
+    await ensureCdm({ keySystem: 'com.widevine.alpha' });
+  };
+
+  const ensureCdm = async (command) => {
     if (mseKeys) {
       return;
     }
+    const keySystem = command && command.keySystem;
     if (!widevinePromise) {
-      widevinePromise = createWidevine().catch((error) => {
+      const create = isPlayReadySystem(keySystem)
+        ? () => createPlayReady(command.sessionType)
+        : createWidevine;
+      widevinePromise = create().catch((error) => {
         widevinePromise = null;
         throw error;
       });
@@ -1169,18 +1222,19 @@
     emit('mse-update', Object.assign({ id: String(command.id || '') }, mseSnapshot(buffer)));
   };
 
-  const generateWidevine = async (command) => {
+  const generateSession = async (command) => {
     if (!mseKeys) {
-      throw new Error('widevine keys are not ready');
+      throw new Error('media keys are not ready');
     }
     const id = String(command.id || '');
-    const session = mseKeys.createSession('temporary');
+    const sessionType = command.sessionType === 'persistent-license' ? 'persistent-license' : 'temporary';
+    const session = mseKeys.createSession(sessionType);
     mseSessions.set(id, session);
     session.addEventListener('message', (event) => {
       emit('eme-message', {
         id,
         messageType: event.messageType || 'license-request',
-        bytes: base64FromBytes(event.message)
+        bytes: base64FromBytes(messageBytes(event.message))
       });
     });
     session.addEventListener('keystatuseschange', () => {
@@ -1192,13 +1246,18 @@
     emit('eme-generated', { id, sessionId: session.sessionId || '' });
   };
 
-  const updateWidevine = async (command) => {
-    const session = mseSessions.get(String(command.id || ''));
+  const updateSession = async (command) => {
+    const id = String(command.id || '');
+    const session = mseSessions.get(id);
+    // A license for the session just closed can still be queued behind the next
+    // open. Reject that update on its own id. Throwing here is caught as a
+    // failure of whichever command flushed the queue, which is the new generate.
     if (!session) {
-      throw new Error('missing widevine session');
+      emit('mse-error', { id, op: 'update', message: 'missing media key session' });
+      return;
     }
     await session.update(bytesFromBase64(command.bytes || ''));
-    emit('eme-updated', { id: String(command.id || '') });
+    emit('eme-updated', { id });
   };
 
   const handlers = {
@@ -1415,8 +1474,8 @@
         return;
       }
       if (op === 'generate') {
-        await ensureWidevine();
-        await generateWidevine(command);
+        await ensureCdm(command);
+        await generateSession(command);
         await flushEme();
         return;
       }
@@ -1425,11 +1484,11 @@
           pendingEme.push(command);
           return;
         }
-        await updateWidevine(command);
+        await updateSession(command);
         return;
       }
       if (op === 'cert') {
-        await ensureWidevine();
+        await ensureCdm(command);
         await applyCertificate(command);
       }
     }
