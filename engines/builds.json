@@ -38,5 +38,54 @@
     "versionLabel": "85.0.4177.0",
     "archive": "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Win_x64/779971/chrome-win.zip",
     "args": ["--no-sandbox", "--disable-gpu", "--no-proxy-server"]
+  },
+  {
+    "id": "chromium-49",
+    "milestone": 49,
+    "revision": 369909,
+    "versionLabel": "49.0.2623.0",
+    "archive": "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Win/369909/chrome-win32.zip",
+    "args": ["--no-sandbox", "--disable-gpu", "--no-proxy-server"]
+  },
+  {
+    "id": "chromium-74",
+    "milestone": 74,
+    "revision": 641577,
+    "versionLabel": "74.0.3729.0",
+    "archive": "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Win_x64/641577/chrome-win.zip",
+    "args": ["--no-sandbox", "--disable-gpu", "--no-proxy-server"]
+  },
+  {
+    "id": "chromium-84",
+    "milestone": 84,
+    "revision": 782078,
+    "versionLabel": "84.0.4147.0",
+    "archive": "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Win_x64/782078/chrome-win.zip",
+    "args": ["--no-sandbox", "--disable-gpu", "--no-proxy-server"]
+  },
+  {
+    "id": "chromium-88",
+    "milestone": 88,
+    "revision": 827102,
+    "versionLabel": "88.0.4324.0",
+    "archive": "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Win_x64/827102/chrome-win.zip",
+    "args": ["--no-sandbox", "--disable-gpu", "--no-proxy-server"]
+  },
+  {
+    "id": "chrome-122",
+    "milestone": 122,
+    "revision": 1250580,
+    "versionLabel": "122.0.6261.128",
+    "archive": "https://storage.googleapis.com/chrome-for-testing-public/122.0.6261.128/win64/chrome-win64.zip",
+    "args": ["--no-sandbox", "--disable-gpu", "--no-proxy-server"]
+  },
+  {
+    "id": "firefox-44",
+    "kind": "firefox",
+    "milestone": 44,
+    "revision": 4402,
+    "versionLabel": "44.0.2",
+    "archive": "https://archive.mozilla.org/pub/firefox/releases/44.0.2/win64/en-US/Firefox%20Setup%2044.0.2.exe",
+    "args": []
   }
 ]

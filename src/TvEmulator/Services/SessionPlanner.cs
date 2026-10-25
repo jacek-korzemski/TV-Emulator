@@ -53,6 +53,18 @@ public static class SessionPlanner
             return electron;
         }
 
+        if (string.Equals(engine.Kind, "firefox", StringComparison.Ordinal))
+        {
+            return
+            [
+                "-profile", userDataDir,
+                "-no-remote",
+                "-width", rect.Width.ToString(CultureInfo.InvariantCulture),
+                "-height", rect.Height.ToString(CultureInfo.InvariantCulture),
+                url
+            ];
+        }
+
         var args = new List<string>
         {
             "--user-data-dir=" + userDataDir,

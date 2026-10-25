@@ -1,0 +1,33 @@
+{
+  "id": "vidaa-u2",
+  "label": "Hisense VIDAA U2-class (Chromium 74)",
+  "platform": "vidaa",
+  "engine": "chromium-74",
+  "player": "edge",
+  "userAgent": "Mozilla/5.0 (X11; Linux armv7l) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.108 Odin/74.3729.2.10 Safari/537.36 Model/Hisense-MSD6886 VIDAA/4.0(Hisense;SmartTV;55A7100;mstar6886/V0000.04.00.N0101;UHD)",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "4.0",
+  "keys": {
+    "back": 8,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "55A7100",
+    "modelCode": "MSD6886",
+    "firmware": "V0000.04.00.N0101",
+    "duid": "EMULATOR-VIDAA-U2",
+    "uhd": true,
+    "brand": "Hisense"
+  }
+}

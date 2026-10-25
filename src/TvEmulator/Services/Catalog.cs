@@ -31,7 +31,10 @@ public static class Catalog
         if (string.Equals(engine.Kind, "electron", StringComparison.Ordinal))
             return Directory.EnumerateFiles(dir, "electron.exe", SearchOption.AllDirectories).FirstOrDefault();
 
-        foreach (var relative in new[] { "chrome-win32\\chrome.exe", "chrome-win\\chrome.exe" })
+        if (string.Equals(engine.Kind, "firefox", StringComparison.Ordinal))
+            return Directory.EnumerateFiles(dir, "firefox.exe", SearchOption.AllDirectories).FirstOrDefault();
+
+        foreach (var relative in new[] { "chrome-win32\\chrome.exe", "chrome-win\\chrome.exe", "chrome-win64\\chrome.exe" })
         {
             var candidate = Path.Combine(dir, relative);
             if (File.Exists(candidate))

@@ -1,0 +1,32 @@
+{
+  "entries": [
+    {
+      "date": "2026-10-25",
+      "title": "More TV profiles and a universal VOD sample",
+      "items": [
+        "Profiles now cover Hisense VIDAA, Vizio SmartCast, Philips Saphi and Titan OS, HbbTV 1.5, Panasonic my Home Screen (Firefox 44), and Sony BRAVIA / Vewd, alongside the existing Tizen and webOS sets.",
+        "Each new profile pins its own engine and player path: Edge under the page for most Chromium sets, Chrome for Testing 122 playing in-page on Titan, and Firefox 44 for the 2016 Panasonic set.",
+        "samples/universal-vod is a remote VOD catalog that switches between AVPlay on Tizen and Shaka elsewhere, with clear, PlayReady, and Widevine DASH demos."
+      ]
+    },
+    {
+      "date": "2026-10-25",
+      "title": "Live debug preview",
+      "items": [
+        "A phone-friendly preview on your LAN shows the console, network traffic, JavaScript memory, and the session log while the TV page is running.",
+        "The memory tab tracks the page heap and the video-plane heap separately, including a lighter object trace and optional full heap snapshots for spotting leaks.",
+        "The network tab lists requests as they happen, with filters and a look at headers and bodies."
+      ]
+    },
+    {
+      "date": "2026-10-24",
+      "title": "First public build",
+      "items": [
+        "Windows app that opens a Smart TV page in a 16:9 picture and takes a remote (keyboard or gamepad) instead of the mouse.",
+        "Samsung Tizen profiles from 2017 through 2022, each on the Chromium version close to that year’s TV, with video through an avplay-style plane.",
+        "An LG webOS 4 profile whose page stays on old Chromium while Edge handles Widevine and decoding.",
+        "Sample pages for a Tizen key test, a Tizen video test, and a webOS hello page."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "saphi-49",
+  "label": "Philips NetTV / early Saphi (Chromium 49)",
+  "platform": "saphi",
+  "engine": "chromium-49",
+  "player": "edge",
+  "userAgent": "Mozilla/5.0 (Linux armv7l) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.112 Safari/537.36 OPR/36.0.2128.0 OMI/4.8.0.129.Driver6.32 , _TV_MT5806/091.003.225.001 (Philips, PUT6604, wireless) CE-HTML/1.0 NETTV/4.6.0.2 SignOn/2.0 SmartTvA/5.0.0 WH1.0 en",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "4.6",
+  "keys": {
+    "back": 461,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "PUT6604",
+    "modelCode": "MT5806",
+    "firmware": "091.003.225.001",
+    "duid": "EMULATOR-SAPHI-49",
+    "uhd": false,
+    "brand": "Philips"
+  }
+}

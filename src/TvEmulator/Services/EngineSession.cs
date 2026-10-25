@@ -47,7 +47,7 @@ public sealed class EngineSession : IDisposable
         foreach (var argument in arguments)
             start.ArgumentList.Add(argument);
 
-        _process = Process.Start(start) ?? throw new InvalidOperationException("Nie udało się uruchomić Chromium.");
+        _process = Process.Start(start) ?? throw new InvalidOperationException("Nie udało się uruchomić silnika.");
         _process.EnableRaisingEvents = true;
         _process.Exited += (_, _) =>
         {

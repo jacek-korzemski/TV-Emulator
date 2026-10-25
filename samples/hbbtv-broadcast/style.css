@@ -1,0 +1,21 @@
+html, body {
+  margin: 0;
+  background: #14161c;
+  color: #f4f1ea;
+  font-family: sans-serif;
+}
+
+#broadcast {
+  position: absolute;
+  left: 160px;
+  top: 120px;
+  width: 1600px;
+  height: 900px;
+}
+
+.hint {
+  position: absolute;
+  left: 64px;
+  top: 36px;
+  font-size: 32px;
+}

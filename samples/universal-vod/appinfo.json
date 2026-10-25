@@ -1,0 +1,8 @@
+{
+  "id": "com.emulator.universalvod",
+  "version": "1.0.0",
+  "vendor": "emulator",
+  "type": "web",
+  "main": "index.html",
+  "title": "Universal VOD"
+}

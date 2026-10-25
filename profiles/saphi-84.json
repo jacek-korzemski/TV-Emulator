@@ -1,0 +1,33 @@
+{
+  "id": "saphi-84",
+  "label": "Philips Saphi 2020–2022 (Chromium 84)",
+  "platform": "saphi",
+  "engine": "chromium-84",
+  "player": "edge",
+  "userAgent": "Mozilla/5.0 (Linux armv7l) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.62 Safari/537.36 OPR/46.0.2207.0 OMI/4.21.0.235, TV_NT72671_2021/216.003.015.001 (Philips, PUS7506, wireless) CE-HTML/1.0 NETTV/4.6.0.4 SignOn/2.0 SmartTvA/5.0.0 WhaleTV/2.0 en",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "2.0",
+  "keys": {
+    "back": 461,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "PUS7506",
+    "modelCode": "NT72671",
+    "firmware": "216.003.015.001",
+    "duid": "EMULATOR-SAPHI-84",
+    "uhd": true,
+    "brand": "Philips"
+  }
+}

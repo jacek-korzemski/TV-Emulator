@@ -1,0 +1,33 @@
+{
+  "id": "titan-122",
+  "label": "Titan OS (Chrome 122)",
+  "platform": "titan",
+  "engine": "chrome-122",
+  "player": "page",
+  "userAgent": "Mozilla/5.0 (Linux armv7l) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.128 Safari/537.36 OPR/46.0.2207.0 OMI/4.24, TV_NT72690_2025_4K/251.002.050.001 (Philips, PUS8310, wired) CE-HTML/1.0 NETTV/4.6.0.8 SignOn/2.0 SmartTvA/5.0.0 TitanOS/3.0 en",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "3.0",
+  "keys": {
+    "back": 461,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "PUS8310",
+    "modelCode": "NT72690",
+    "firmware": "251.002.050.001",
+    "duid": "EMULATOR-TITAN-122",
+    "uhd": true,
+    "brand": "Philips"
+  }
+}

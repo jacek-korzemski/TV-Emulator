@@ -1,0 +1,33 @@
+{
+  "id": "smartcast-47",
+  "label": "Vizio SmartCast (Chromium 47)",
+  "platform": "smartcast",
+  "engine": "chromium-47",
+  "player": "edge",
+  "userAgent": "Mozilla/5.0 (X11; Linux armv7l) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.111 Safari/537.36 CrKey/1.20.77295 VIZIO-DTV/V1.0 (Vizio, D43-D1, wired)",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "2016",
+  "keys": {
+    "back": 8,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "D43-D1",
+    "modelCode": "D43-D1",
+    "firmware": "1.20.77295",
+    "duid": "EMULATOR-VIZIO-47",
+    "uhd": false,
+    "brand": "Vizio"
+  }
+}

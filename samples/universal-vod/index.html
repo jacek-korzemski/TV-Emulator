@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Universal VOD</title>
+  <script src="$WEBAPIS/webapis/webapis.js"></script>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="stage">
+    <object id="av-player" type="application/avplayer"></object>
+
+    <div id="home" class="screen is-open">
+      <div class="top">
+        <div class="brand">Universal VOD</div>
+        <div id="device" class="device"></div>
+      </div>
+      <div id="row" class="row"></div>
+      <div class="hint">Lewo / Prawo wybiera tytuł. Enter otwiera szczegóły. Back zamyka aplikację.</div>
+    </div>
+
+    <div id="detail" class="screen">
+      <div class="detail-layout">
+        <div id="detail-poster" class="detail-poster">
+          <div id="detail-watermark" class="watermark"></div>
+          <div id="detail-badge" class="badge"></div>
+          <div id="detail-ribbon" class="unavailable"></div>
+        </div>
+        <div class="detail-copy">
+          <div id="detail-kicker" class="kicker"></div>
+          <h1 id="detail-title"></h1>
+          <div id="detail-meta" class="meta"></div>
+          <p id="detail-synopsis" class="synopsis"></p>
+          <div id="play" class="play is-focused">Odtwórz</div>
+          <div id="detail-note" class="detail-note"></div>
+          <div class="hint hint-inline">Enter odtwarza. Back wraca do katalogu.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="osd" class="osd">
+      <div id="osd-title" class="osd-title"></div>
+      <div class="osd-row">
+        <span id="osd-state" class="osd-state">Buforowanie</span>
+        <span id="osd-time" class="osd-time">0:00 / 0:00</span>
+      </div>
+      <div class="seek" id="seek">
+        <div id="seek-fill" class="seek-fill"></div>
+      </div>
+      <div id="osd-error" class="osd-error"></div>
+      <div class="hint hint-inline">Enter: play / pauza. Lewo / Prawo: 10 sekund. Czerwony lub Back: stop.</div>
+    </div>
+  </div>
+
+  <script src="js/catalog.js"></script>
+  <script src="js/backend-avplay.js"></script>
+  <script src="js/backend-shaka.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "id": "panasonic-2016",
+  "label": "Panasonic my Home Screen (Firefox OS 2.5)",
+  "platform": "panasonic",
+  "engine": "firefox-44",
+  "player": "page",
+  "userAgent": "Mozilla/5.0 (Linux; U; Viera; rv:44.0) Gecko/20100101 Firefox/44.0 Panasonic-Viera/TX-65DX900",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "2.5",
+  "keys": {
+    "back": 461,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "TX-65DX900",
+    "modelCode": "TX-65DX900",
+    "firmware": "2.5",
+    "duid": "EMULATOR-PANASONIC-2016",
+    "uhd": true,
+    "brand": "Panasonic"
+  }
+}

@@ -62,9 +62,23 @@
     installDiagnostics();
     if (profile.platform === "tizen") {
       installTizen();
-    }
-    if (profile.platform === "webos") {
+    } else if (profile.platform === "webos") {
       installWebOs();
+    } else if (profile.platform === "vidaa") {
+      installVidaa();
+    } else if (profile.platform === "smartcast") {
+      installSmartCast();
+    } else if (profile.platform === "saphi" || profile.platform === "titan") {
+      installDeviceInfo();
+    } else if (profile.platform === "hbbtv") {
+      installHbbtv();
+    } else if (profile.platform === "panasonic") {
+      installPanasonic();
+    } else if (profile.platform === "sony") {
+      installSony();
+    }
+    if (profile.player === "edge" && profile.platform !== "tizen" && profile.platform !== "hbbtv") {
+      installEdgePlayback();
     }
   }
 
@@ -1795,16 +1809,15 @@
       stageReady: function () {},
       platformBack: function () { global.webOS.platformBack(); }
     };
-    installWebOsPlayback();
   }
 
   /*
-   * webOS 4 plays through the HTML engine and Widevine, not AVPlay.
-   * Chromium 53 has neither a CDM nor H.264, so the page keeps choosing
-   * variants and downloading segments. The Edge plane owns the real Widevine
-   * session and the decoder. The page video is only a clock.
+   * HTML5 video with Widevine. The pinned Chromium often has neither a CDM
+   * nor H.264, so the page keeps choosing variants and downloading segments.
+   * The Edge plane owns the real Widevine session and the decoder. The page
+   * video is only a clock. Tizen stays on avplay. HbbTV uses video/broadcast.
    */
-  function installWebOsPlayback() {
+  function installEdgePlayback() {
     var keyColor = "#010001";
     var mediaSeq = 1;
     var head = 0;
@@ -2796,6 +2809,167 @@
         global.setTimeout(poll, 1000);
       };
       xhr.send();
+    }
+  }
+
+  function installVidaa() {
+    global.Hisense_GetDeviceID = function () { return product.duid || "EMULATOR-VIDAA"; };
+    global.Hisense_GetFirmWareVersion = function () { return product.firmware || ""; };
+    global.Hisense_GetModelName = function () { return product.model || ""; };
+    global.Hisense_GetBrand = function () { return product.brand || "Hisense"; };
+    global.Hisense_Get4KSupportState = function () { return product.uhd === true; };
+    global.Hisense_GetCountryCode = function () { return "POL"; };
+  }
+
+  function installSmartCast() {
+    global.VIZIO = {
+      getDeviceId: function (callback) { if (callback) callback(product.duid || "EMULATOR-VIZIO"); },
+      getModelName: function (callback) { if (callback) callback(product.model || ""); },
+      getFirmwareVersion: function (callback) { if (callback) callback(product.firmware || ""); },
+      exitApplication: function () { requestExit(); }
+    };
+  }
+
+  function installDeviceInfo() {
+    var titan = profile.platform === "titan";
+    global.DeviceInfo = {
+      Channel: {
+        appStore: titan ? "TitanOS" : "NetTV",
+        vendor: "TPV",
+        brand: product.brand || "Philips"
+      },
+      Product: {
+        platform: product.modelCode || "",
+        year: titan ? 2025 : 2021,
+        deviceID: product.duid || "EMULATOR-PHILIPS",
+        firmwareVersion: product.firmware || ""
+      },
+      Capability: {
+        os: titan ? "TitanOS" : "Saphi",
+        browserEngine: "Chrome",
+        supportUHD: product.uhd === true,
+        supportPlayready: false,
+        supportWidevine: true
+      }
+    };
+  }
+
+  function installPanasonic() {
+    global.Panasonic = {
+      brand: product.brand || "Panasonic",
+      model: product.model || "",
+      firmware: product.firmware || "",
+      deviceId: product.duid || "EMULATOR-PANASONIC"
+    };
+  }
+
+  function installSony() {
+    global.Sony = {
+      brand: product.brand || "Sony",
+      model: product.model || "",
+      firmware: product.firmware || "",
+      deviceId: product.duid || "EMULATOR-SONY"
+    };
+  }
+
+  function installHbbtv() {
+    var keyColor = "#010001";
+    var style = document.createElement("style");
+    style.setAttribute("data-tv-emulator", "hbbtv");
+    style.appendChild(document.createTextNode(
+      "object[type=\"video/broadcast\"]{display:block;background-color:" + keyColor + " !important;}"
+    ));
+    var parent = document.head || document.documentElement;
+    if (parent) {
+      parent.appendChild(style);
+    }
+
+    function send(command) {
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/__emulator/avplay", false);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.send(JSON.stringify(command));
+      } catch (ignore) {}
+    }
+
+    function streamUrl(object) {
+      var url = object.getAttribute("data") || object.getAttribute("data-stream") || "";
+      if (url) {
+        return url;
+      }
+      var param = object.querySelector ? object.querySelector("param[name='stream']") : null;
+      return param ? (param.getAttribute("value") || "") : "";
+    }
+
+    function bind(object) {
+      if (!object || object._tvBroadcast) {
+        return;
+      }
+      object._tvBroadcast = true;
+      object.playState = 0;
+      object.bindToCurrentChannel = function () {
+        var url = streamUrl(object);
+        if (!url) {
+          return;
+        }
+        object.playState = 1;
+        send({ cmd: "open", url: url, gen: 1 });
+        send({ cmd: "prepare", gen: 1 });
+        send({ cmd: "play", gen: 1 });
+        object.playState = 2;
+        if (typeof object.onPlayStateChange === "function") {
+          object.onPlayStateChange();
+        }
+      };
+      object.stop = function () {
+        send({ cmd: "stop", gen: 1 });
+        object.playState = 3;
+        if (typeof object.onPlayStateChange === "function") {
+          object.onPlayStateChange();
+        }
+      };
+    }
+
+    function scan(root) {
+      var nodes = [];
+      if (root && root.querySelectorAll) {
+        nodes = root.querySelectorAll("object[type='video/broadcast'], object[type=\"video/broadcast\"]");
+      }
+      var i;
+      for (i = 0; i < nodes.length; i++) {
+        bind(nodes[i]);
+      }
+    }
+
+    function arm() {
+      scan(document);
+      if (!global.MutationObserver || !document.documentElement) {
+        return;
+      }
+      new global.MutationObserver(function (records) {
+        var i;
+        for (i = 0; i < records.length; i++) {
+          var record = records[i];
+          var j;
+          for (j = 0; j < record.addedNodes.length; j++) {
+            var node = record.addedNodes[j];
+            if (node.nodeType !== 1) {
+              continue;
+            }
+            if (String(node.getAttribute && node.getAttribute("type") || "").toLowerCase() === "video/broadcast") {
+              bind(node);
+            }
+            scan(node);
+          }
+        }
+      }).observe(document.documentElement, { childList: true, subtree: true });
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", arm);
+    } else {
+      arm();
     }
   }
 })(window);

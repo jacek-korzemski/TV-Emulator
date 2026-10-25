@@ -1,0 +1,33 @@
+{
+  "id": "smartcast-56",
+  "label": "Vizio SmartCast (Chromium 56)",
+  "platform": "smartcast",
+  "engine": "chromium-56",
+  "player": "edge",
+  "userAgent": "Mozilla/5.0 (X11; Linux armv7l) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36 CrKey/1.22.80285 VIZIO-DTV/V1.0 (Vizio, E55-E1, wired)",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "2017",
+  "keys": {
+    "back": 8,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "E55-E1",
+    "modelCode": "E55-E1",
+    "firmware": "1.22.80285",
+    "duid": "EMULATOR-VIZIO-56",
+    "uhd": true,
+    "brand": "Vizio"
+  }
+}

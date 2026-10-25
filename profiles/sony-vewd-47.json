@@ -1,0 +1,33 @@
+{
+  "id": "sony-vewd-47",
+  "label": "Sony BRAVIA / Vewd (Chromium 47)",
+  "platform": "sony",
+  "engine": "chromium-47",
+  "player": "edge",
+  "userAgent": "Mozilla/5.0 (Linux armv7l) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.111 Safari/537.36 OPR/32.0.2128.0 OMI/4.6.12.48.Sony.13 Model/Sony-KDL-55W800C",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "4.6",
+  "keys": {
+    "back": 461,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "KDL-55W800C",
+    "modelCode": "KDL-55W800C",
+    "firmware": "4.6.12.48",
+    "duid": "EMULATOR-SONY-47",
+    "uhd": false,
+    "brand": "Sony"
+  }
+}

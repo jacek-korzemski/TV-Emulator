@@ -188,12 +188,12 @@ public class AvplayTests
         var shim = File.ReadAllText(Path.Combine(root, "shims", "platform.js"));
         var plane = File.ReadAllText(Path.Combine(root, "shims", "videoplane.js"));
         var main = File.ReadAllText(Path.Combine(root, "src", "TvEmulator", "MainWindow.xaml.cs"));
-        var playbackAt = shim.IndexOf("function installWebOsPlayback()", StringComparison.Ordinal);
+        var playbackAt = shim.IndexOf("function installEdgePlayback()", StringComparison.Ordinal);
 
-        Assert.Contains("profile.Platform is \"tizen\" or \"webos\"", main);
+        Assert.Contains("profile.Player is \"edge\" or \"avplay\"", main);
         Assert.True(playbackAt > 0);
         var playback = shim.Substring(playbackAt);
-        Assert.Contains("installWebOsPlayback();", shim);
+        Assert.Contains("installEdgePlayback();", shim);
         Assert.Contains("com.widevine.alpha", playback);
         Assert.Contains("/__emulator/media", playback);
         Assert.Contains("data-tv-hole", playback);

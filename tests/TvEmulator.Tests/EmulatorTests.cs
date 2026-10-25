@@ -103,6 +103,9 @@ public class EmulatorTests
         Assert.Contains(profiles, profile => profile.Id == "tizen-2018" && profile.Engine == "chromium-56" && profile.Player == "avplay");
         Assert.Contains(profiles, profile => profile.Id == "tizen-2019" && profile.Engine == "chromium-63" && profile.Player == "avplay");
         Assert.Contains(profiles, profile => profile.Id == "tizen-2022" && profile.Engine == "chromium-85" && profile.PlatformVersion == "6.5" && profile.Player == "avplay");
+        Assert.Contains(profiles, profile => profile.Id == "vidaa-u6" && profile.Engine == "chromium-88" && profile.Player == "edge");
+        Assert.Contains(profiles, profile => profile.Id == "titan-122" && profile.Engine == "chrome-122" && profile.Player == "page");
+        Assert.Contains(profiles, profile => profile.Id == "panasonic-2016" && profile.Engine == "firefox-44" && profile.Player == "page");
         Assert.All(profiles, profile =>
         {
             Assert.Null(profile.MemoryMb);
@@ -115,21 +118,28 @@ public class EmulatorTests
         Assert.All(profiles.Where(profile => profile.Id != "tizen-2018"), profile => Assert.Empty(profile.Quirks.DeleteGlobals));
 
         var engines = Catalog.LoadEngines(root);
-        Assert.Equal(5, engines.Count);
+        Assert.Equal(11, engines.Count);
         Assert.Equal("chromium", Assert.Single(engines, item => item.Id == "chromium-47").Kind);
+        Assert.Equal("firefox", Assert.Single(engines, item => item.Id == "firefox-44").Kind);
         Assert.DoesNotContain(engines, item => item.Kind == "electron");
         foreach (var profile in profiles)
         {
             var built = Assert.Single(engines, item => item.Id == profile.Engine);
-            Assert.Equal("chromium", built.Kind);
+            Assert.Equal(profile.Engine == "firefox-44" ? "firefox" : "chromium", built.Kind);
             Assert.NotNull(Catalog.LocateEngine(root, built));
             var expectedMilestone = profile.Id switch
             {
-                "tizen-2017" => 47,
-                "webos-4" => 53,
-                "tizen-2018" => 56,
-                "tizen-2019" => 63,
+                "tizen-2017" or "smartcast-47" or "sony-vewd-47" => 47,
+                "webos-4" or "hbbtv-2" => 53,
+                "tizen-2018" or "smartcast-56" => 56,
+                "tizen-2019" or "smartcast-63" => 63,
                 "tizen-2022" => 85,
+                "saphi-49" => 49,
+                "vidaa-u2" => 74,
+                "saphi-84" => 84,
+                "vidaa-u6" => 88,
+                "titan-122" => 122,
+                "panasonic-2016" => 44,
                 _ => throw new InvalidOperationException("Nieznany profil " + profile.Id)
             };
             Assert.Equal(expectedMilestone, built.Milestone);
@@ -169,6 +179,18 @@ public class EmulatorTests
         Assert.Contains("--enable-precise-memory-info", debug);
         Assert.DoesNotContain("--enable-precise-memory-info", args);
         Assert.Equal("--app=http://127.0.0.1:47911/", debug[^1]);
+        var firefox = SessionPlanner.Arguments(
+            new EngineBuild { Kind = "firefox" },
+            profile,
+            new PixelRect(10, 20, 1600, 900),
+            47911,
+            @"C:\data dir",
+            debug: true);
+        Assert.Equal("-profile", firefox[0]);
+        Assert.Equal(@"C:\data dir", firefox[1]);
+        Assert.Contains("-no-remote", firefox);
+        Assert.DoesNotContain(firefox, argument => argument.Contains("remote-debugging-port", StringComparison.Ordinal));
+        Assert.Equal("http://127.0.0.1:47911/", firefox[^1]);
     }
 
     [Fact]

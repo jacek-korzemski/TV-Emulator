@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TV Emulator</title>
+  <meta name="description" content="A Windows stand-in for smart TV browsers: Tizen, webOS, VIDAA, SmartCast, Saphi, Titan, HbbTV, Panasonic, and Sony. Era-matched engines for the page, Edge for video and DRM.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-copy">
+      <p class="brand">TV Emulator</p>
+      <h1>Run a television browser on Windows.</h1>
+      <p class="lede">Sixteen profiles across Tizen, webOS, VIDAA, SmartCast, Saphi, Titan, HbbTV, Panasonic, and Sony — each on the engine that year shipped, with Edge carrying codecs and DRM where the old browser cannot.</p>
+      <p class="cta">
+        <a class="cta-primary" href="https://github.com/jacek-korzemski/TV-Emulator">View source</a>
+        <a class="cta-secondary" href="https://github.com/jacek-korzemski/TV-Emulator#get-started">Get started</a>
+      </p>
+    </div>
+    <figure class="hero-shot">
+      <div class="stage-card">
+        <img src="assets/stage.png" alt="Tizen sample page running full screen in a 16:9 stage" width="1920" height="1080">
+        <span class="stage-glare" aria-hidden="true"></span>
+      </div>
+    </figure>
+  </header>
+
+  <main>
+    <section id="profiles">
+      <h2>What it emulates</h2>
+      <p class="section-lede">Samsung and LG still lead the list. Beyond them: Hisense VIDAA, Vizio SmartCast, Philips Saphi and Titan OS, HbbTV, Panasonic my Home Screen, and Sony BRAVIA / Vewd. Each profile pins an engine close to that set’s year, then chooses how video is played.</p>
+      <div class="table-wrap">
+        <table>
+          <caption>Shipped television profiles</caption>
+          <thead>
+            <tr>
+              <th scope="col">Profile</th>
+              <th scope="col">Chromium</th>
+              <th scope="col">Picture</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Samsung Tizen 3.0 (2017)</th>
+              <td>47</td>
+              <td>avplay</td>
+            </tr>
+            <tr>
+              <th scope="row">Samsung Tizen 4.0 (2018)</th>
+              <td>56</td>
+              <td>avplay</td>
+            </tr>
+            <tr>
+              <th scope="row">Samsung Tizen 5.0 (2019)</th>
+              <td>63</td>
+              <td>avplay</td>
+            </tr>
+            <tr>
+              <th scope="row">Samsung Tizen 6.5 (2022)</th>
+              <td>85</td>
+              <td>avplay</td>
+            </tr>
+            <tr>
+              <th scope="row">LG webOS TV 4.x (2018–2019)</th>
+              <td>53</td>
+              <td>edge</td>
+            </tr>
+            <tr>
+              <th scope="row">Hisense VIDAA U2-class</th>
+              <td>74</td>
+              <td>edge</td>
+            </tr>
+            <tr>
+              <th scope="row">Hisense VIDAA U6</th>
+              <td>88</td>
+              <td>edge</td>
+            </tr>
+            <tr>
+              <th scope="row">Vizio SmartCast</th>
+              <td>47, 56, 63</td>
+              <td>edge</td>
+            </tr>
+            <tr>
+              <th scope="row">Philips NetTV / early Saphi</th>
+              <td>49</td>
+              <td>edge</td>
+            </tr>
+            <tr>
+              <th scope="row">Philips Saphi 2020–2022</th>
+              <td>84</td>
+              <td>edge</td>
+            </tr>
+            <tr>
+              <th scope="row">Titan OS</th>
+              <td>Chrome 122</td>
+              <td>page</td>
+            </tr>
+            <tr>
+              <th scope="row">HbbTV 1.5</th>
+              <td>53</td>
+              <td>edge</td>
+            </tr>
+            <tr>
+              <th scope="row">Panasonic my Home Screen (2016)</th>
+              <td>Firefox 44</td>
+              <td>page</td>
+            </tr>
+            <tr>
+              <th scope="row">Sony BRAVIA / Vewd</th>
+              <td>47</td>
+              <td>edge</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="how">
+      <h2>How the picture is made</h2>
+      <p class="section-lede">The page and the video do not share a browser. Old TV Chromium cannot play the streams these apps expect.</p>
+      <div class="stack" aria-hidden="true">
+        <div class="plane plane-page">Chromium — the TV page</div>
+        <div class="plane plane-video">Edge — codecs, PlayReady, Widevine</div>
+      </div>
+      <div class="prose">
+        <p>The host is a Windows app. It serves your folder, or loads an <code>http(s)</code> address, and injects a small platform shim. That shim provides the surfaces a TV app looks for — <code>tizen</code> / <code>webapis</code>, <code>webOS</code>, VIDAA <code>Hisense_Get*</code>, <code>VIZIO</code>, Philips <code>DeviceInfo</code>, HbbTV <code>video/broadcast</code>, <code>Panasonic</code>, or <code>Sony</code> — plus the remote key codes for that set. The window is a 16:9 stage. Where the page punches a hole in a key color, the video layer shows through, the same idea as a television’s video plane under the HTML.</p>
+        <p><strong>Tizen uses Chromium plus avplay.</strong> <code>webapis.avplay</code> is the native player on a Samsung TV. The pinned Chromium build has no usable H.264, AAC, or PlayReady. Calls are forwarded to a second window: WebView2, which is current Edge. Edge has the codecs and Microsoft PlayReady, so Shaka Player there can take a clear or PlayReady DASH stream. The Chromium window stays on top and owns clicks. The Edge window sits behind it and only appears through the key color.</p>
+        <p><strong>webOS uses Chromium plus Edge.</strong> webOS 4 plays through the HTML engine and Widevine, not avplay. Chromium 53 has neither a Widevine CDM nor H.264. The page still chooses variants and pulls segments. Edge owns the real Widevine session and the decoder. The video element in the old page is only a clock. PlayReady stays on the Tizen path and is not used here. VIDAA, SmartCast, Saphi, HbbTV, and the Sony profile use that same Edge path. HbbTV <code>video/broadcast</code> is a shim object, not a tuner.</p>
+        <p><strong>Titan plays in the page.</strong> Chrome for Testing 122 can hold Widevine, so that profile does not open the video plane. Panasonic my Home Screen from 2016 runs in Firefox 44. That Firefox has no Chrome DevTools Protocol, so the live preview stays empty while the session log still works. Sony is Chromium 47 with an OMI user agent, because the Vewd TV binary is not public.</p>
+        <p>RAM and CPU numbers stored on a profile are labels only. The app does not throttle the machine to match a television.</p>
+      </div>
+    </section>
+
+    <section id="sample">
+      <h2>One VOD app for every profile</h2>
+      <p class="section-lede"><code>samples/universal-vod</code> is a remote-driven catalog you can open on any shipped set.</p>
+      <div class="prose">
+        <p>Home is a horizontal row of titles. Enter opens a detail screen; Enter again starts playback; arrows seek; the red key or Back stops. The page reads the active profile and chooses a backend: <strong>AVPlay</strong> on Tizen, <strong>Shaka Player</strong> on every other profile.</p>
+        <p>Three public DASH demos sit in the catalog. A clear stream plays on both backends. PlayReady is for the Tizen / AVPlay path. Widevine is for the Shaka / HTML video path. Titles the current set cannot decrypt stay visible but marked unavailable, so you can see which DRM belongs where.</p>
+      </div>
+    </section>
+
+    <section id="features">
+      <h2>What you get while it runs</h2>
+      <p class="section-lede">A remote, a stage, and a live preview you can open on another device.</p>
+      <dl class="feature-list">
+        <div>
+          <dt>Remote, not a mouse</dt>
+          <dd>Arrows and Enter, Esc as Back, F1–F4 as the color keys. A gamepad maps the same way. Ctrl+Shift+Q returns to settings. An optional magic-remote cursor can be shown.</dd>
+        </div>
+        <div>
+          <dt>Your app, local or remote</dt>
+          <dd>Point at a folder with <code>index.html</code>, or paste an http(s) URL. Samples cover hello pages, an HbbTV broadcast shim, and a full VOD catalog that picks AVPlay or Shaka from the active profile.</dd>
+        </div>
+        <div>
+          <dt>Live preview</dt>
+          <dd>With diagnostics on, a page on port 2137 follows the session over the LAN. Console, network, memory, and the session log update while the television view stays full screen. The preview UI is in Polish.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section id="screenshots">
+      <h2>Three views</h2>
+      <p class="section-lede">Settings before launch, the 16:9 stage, and the live preview.</p>
+      <figure>
+        <img src="assets/settings.png" alt="TV Emulator settings window with a Tizen profile selected" width="1520" height="1520">
+        <figcaption><strong>Settings.</strong> Pick the year, the app folder or URL, and the monitor. Diagnostics are on by default and print the preview address.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/debug-console.png" alt="Live preview console tab" width="1600" height="900">
+        <figcaption><strong>Console (Konsola).</strong> <code>console</code> output and exceptions from the page, with level filters.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/debug-network.png" alt="Live preview network tab" width="1600" height="900">
+        <figcaption><strong>Network (Sieć).</strong> Requests as they happen. Filter by type or URL, then open headers and bodies.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/debug-memory.png" alt="Live preview memory tab" width="1600" height="900">
+        <figcaption><strong>Memory (Pamięć).</strong> Page heap and video heap, a lighter object trace, and full snapshots labeled Zostało, Urosło, and Zniknęło.</figcaption>
+      </figure>
+    </section>
+
+    <section id="changelog">
+      <h2>Changelog</h2>
+      <p class="section-lede">Plain-language notes for changes that landed after the previous entry.</p>
+      <ol id="changelog-list">
+        <li>Loading changelog…</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <p>This is a vibe-coded toy, shared in case it is useful. The author described the behavior and the bugs; agents wrote the code. It is not a portfolio piece and it is not a Samsung or LG product.</p>
+    <p><a href="https://github.com/jacek-korzemski/TV-Emulator">github.com/jacek-korzemski/TV-Emulator</a></p>
+  </footer>
+
+  <script src="changelog.js"></script>
+  <script src="stage-card.js"></script>
+</body>
+</html>

@@ -5,6 +5,8 @@ obj/
 logs/*
 !logs/.gitkeep
 engines/chromium-*/
+engines/chrome-*/
+engines/firefox-*/
 engines/electron-*/
 engines/downloads/
 engines/spike-results.json

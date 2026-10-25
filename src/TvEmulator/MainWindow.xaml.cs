@@ -136,7 +136,9 @@ public partial class MainWindow : Window
                 "userdata",
                 engine.Id);
             Directory.CreateDirectory(userData);
-            if (!string.Equals(engine.Kind, "electron", StringComparison.Ordinal))
+            if (string.Equals(engine.Kind, "firefox", StringComparison.Ordinal))
+                FirefoxProfile.Prepare(userData, profile.UserAgent);
+            else if (!string.Equals(engine.Kind, "electron", StringComparison.Ordinal))
                 ChromeProfile.Prepare(userData);
 
             _server = new AppServer();
@@ -157,7 +159,7 @@ public partial class MainWindow : Window
             _server.DebugReported += message => _debugServer?.Hub.AddShim(message);
             _server.Start(_root, source, profile, PointerBox.IsChecked == true, DebugBox.IsChecked == true, "colorKey");
 
-            if (profile.Platform is "tizen" or "webos")
+            if (profile.Player is "edge" or "avplay")
             {
                 _plane = new VideoPlane(
                     Dispatcher,
@@ -185,7 +187,7 @@ public partial class MainWindow : Window
                 DebugBox.IsChecked == true);
             var debug = DebugBox.IsChecked == true;
             _debugServer?.Hub.BeginSession(profile.Id, profile.Label, profile.Engine, debug, _sessionLog?.FilePath, _plane is not null);
-            if (debug && _debugServer is not null)
+            if (debug && _debugServer is not null && !string.Equals(engine.Kind, "firefox", StringComparison.Ordinal))
             {
                 _cdp = CdpWatcher.Start(_debugServer.Hub, _plane is not null);
                 _cdp.EngineLost += () => Dispatcher.BeginInvoke(() =>
