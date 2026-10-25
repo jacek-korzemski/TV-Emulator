@@ -19,6 +19,24 @@ public sealed class EngineSession : IDisposable
     public bool Fitted { get; private set; }
     public event Action? Exited;
 
+    public bool HasExited
+    {
+        get
+        {
+            var process = _process;
+            if (process is null)
+                return false;
+            try
+            {
+                return process.HasExited;
+            }
+            catch (InvalidOperationException)
+            {
+                return true;
+            }
+        }
+    }
+
     public void Start(string exe, IReadOnlyList<string> arguments)
     {
         var start = new ProcessStartInfo(exe)

@@ -38,55 +38,5 @@
     "versionLabel": "85.0.4177.0",
     "archive": "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Win_x64/779971/chrome-win.zip",
     "args": ["--no-sandbox", "--disable-gpu", "--no-proxy-server"]
-  },
-  {
-    "id": "electron-47",
-    "kind": "electron",
-    "milestone": 47,
-    "revision": 0,
-    "electronVersion": "0.36.12",
-    "versionLabel": "47.0.2526.110",
-    "archive": "https://github.com/electron/electron/releases/download/v0.36.12/electron-v0.36.12-win32-x64.zip",
-    "args": []
-  },
-  {
-    "id": "electron-53",
-    "kind": "electron",
-    "milestone": 53,
-    "revision": 0,
-    "electronVersion": "1.4.16",
-    "versionLabel": "53.0.2785.143",
-    "archive": "https://github.com/electron/electron/releases/download/v1.4.16/electron-v1.4.16-win32-x64.zip",
-    "args": []
-  },
-  {
-    "id": "electron-56",
-    "kind": "electron",
-    "milestone": 56,
-    "revision": 0,
-    "electronVersion": "1.6.18",
-    "versionLabel": "56.0.2924.87",
-    "archive": "https://github.com/electron/electron/releases/download/v1.6.18/electron-v1.6.18-win32-x64.zip",
-    "args": []
-  },
-  {
-    "id": "electron-61",
-    "kind": "electron",
-    "milestone": 61,
-    "revision": 0,
-    "electronVersion": "2.0.18",
-    "versionLabel": "61.0.3163.100",
-    "archive": "https://github.com/electron/electron/releases/download/v2.0.18/electron-v2.0.18-win32-x64.zip",
-    "args": []
-  },
-  {
-    "id": "electron-85",
-    "kind": "electron",
-    "milestone": 85,
-    "revision": 0,
-    "electronVersion": "10.4.7",
-    "versionLabel": "85.0.4183.121",
-    "archive": "https://github.com/electron/electron/releases/download/v10.4.7/electron-v10.4.7-win32-x64.zip",
-    "args": []
   }
 ]

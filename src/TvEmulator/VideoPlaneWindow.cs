@@ -40,7 +40,7 @@ public sealed class VideoPlaneWindow : Window
         {
             var arguments = "--disable-web-security --autoplay-policy=no-user-gesture-required --disable-features=CalculateNativeWinOcclusion,WebContentsOcclusion";
             if (debug)
-                arguments += " --remote-debugging-port=9229";
+                arguments += " --remote-debugging-port=9229 --enable-precise-memory-info";
             var options = new CoreWebView2EnvironmentOptions(arguments);
             var environment = await CoreWebView2Environment.CreateAsync(null, userDataFolder, options);
             await _view.EnsureCoreWebView2Async(environment);

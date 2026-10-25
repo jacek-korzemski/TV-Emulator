@@ -115,9 +115,9 @@ public class EmulatorTests
         Assert.All(profiles.Where(profile => profile.Id != "tizen-2018"), profile => Assert.Empty(profile.Quirks.DeleteGlobals));
 
         var engines = Catalog.LoadEngines(root);
+        Assert.Equal(5, engines.Count);
         Assert.Equal("chromium", Assert.Single(engines, item => item.Id == "chromium-47").Kind);
-        Assert.Equal("electron", Assert.Single(engines, item => item.Id == "electron-85").Kind);
-        Assert.Equal("10.4.7", Assert.Single(engines, item => item.Id == "electron-85").ElectronVersion);
+        Assert.DoesNotContain(engines, item => item.Kind == "electron");
         foreach (var profile in profiles)
         {
             var built = Assert.Single(engines, item => item.Id == profile.Engine);
@@ -166,6 +166,8 @@ public class EmulatorTests
         Assert.Equal("--app=http://127.0.0.1:47911/player/index.html?x=1#home", hosted[^1]);
         var debug = SessionPlanner.Arguments(engine, profile, new PixelRect(10, 20, 1600, 900), 47911, @"C:\data dir", debug: true);
         Assert.Contains("--remote-debugging-port=9223", debug);
+        Assert.Contains("--enable-precise-memory-info", debug);
+        Assert.DoesNotContain("--enable-precise-memory-info", args);
         Assert.Equal("--app=http://127.0.0.1:47911/", debug[^1]);
     }
 
@@ -190,10 +192,12 @@ public class EmulatorTests
         Assert.Contains("--tv-scale=0.8333", args);
         Assert.Contains(@"--tv-user-data=C:\data dir", args);
         Assert.DoesNotContain("--tv-debug-port=9223", args);
+        Assert.DoesNotContain("--tv-switch=enable-precise-memory-info", args);
         Assert.Equal("--tv-url=http://127.0.0.1:47911/", args[^1]);
 
         var debug = SessionPlanner.Arguments(engine, profile, stage, 47911, @"C:\data dir", "/", shell, debug: true);
         Assert.Contains("--tv-debug-port=9223", debug);
+        Assert.Contains("--tv-switch=enable-precise-memory-info", debug);
         Assert.Equal("--tv-url=http://127.0.0.1:47911/", debug[^1]);
     }
 

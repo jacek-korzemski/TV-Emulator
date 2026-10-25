@@ -2,9 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="TV Emulator"
-        Height="700"
+        Height="760"
         Width="760"
-        MinHeight="560"
+        MinHeight="640"
         MinWidth="640"
         WindowStartupLocation="CenterScreen"
         Background="#1B1D22"
@@ -71,6 +71,8 @@
         <CheckBox x:Name="PointerBox" Content="Wskaźnik magic remote (kursor widoczny)" Foreground="#F3F1EA"/>
         <CheckBox x:Name="DebugBox" IsChecked="True" Margin="0,8,0,0"
                   Content="Zapis diagnostyczny do logs/session-….log" Foreground="#F3F1EA"/>
+        <TextBlock x:Name="DebugAddressText" Margin="0,10,0,0" TextWrapping="Wrap" Foreground="#C8C4B8"
+                   LineHeight="20" Text="Podgląd na żywo startuje…"/>
       </StackPanel>
 
       <StackPanel Grid.Row="6">

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>TV Emulator — podgląd</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div id="status-row">
+        <strong id="status-title">Podgląd</strong>
+        <span id="status-conn">łączenie…</span>
+      </div>
+      <p id="status-meta"></p>
+    </header>
+    <div id="toolbar"></div>
+    <div id="scroller-wrap">
+      <div id="scroller"></div>
+      <button type="button" id="pin" aria-pressed="true" aria-label="Przypięte do najnowszych. Kliknij, żeby zatrzymać.">
+        <svg class="lock-closed" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <rect x="5" y="11" width="14" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <svg class="lock-open" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" hidden>
+          <rect x="5" y="11" width="14" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M16 11V7a4 4 0 0 0-8 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <nav id="tabs">
+      <button type="button" data-tab="console" aria-current="page">Konsola</button>
+      <button type="button" data-tab="network">Sieć</button>
+      <button type="button" data-tab="memory">Pamięć</button>
+      <button type="button" data-tab="log">Log</button>
+    </nav>
+  </div>
+  <div id="help-modal" hidden>
+    <div class="help-backdrop" data-action="close-help"></div>
+    <div class="help-panel" role="dialog" aria-modal="true" aria-labelledby="help-title">
+      <div class="help-head">
+        <h2 id="help-title">Jak czytać pamięć</h2>
+        <button type="button" data-action="close-help" aria-label="Zamknij">×</button>
+      </div>
+      <div class="help-body">
+        <p>Górna liczba i pierwsza linia to <strong>performance.memory</strong>: ile sterty JS jest zajęte. To nie jest lista obiektów.</p>
+        <p>Druga linia, „śledzone obiekty”, idzie małymi porcjami i nie zatrzymuje strony. Spadek to zbiórka śmieci. Stary GC spada rzadko i stromo. Nowszy spada częściej i mniejszymi krokami.</p>
+        <p>Pełny zrzut na chwilę zatrzymuje stronę w telewizorze. Pierwszy zrzut mówi, co siedzi w pamięci. Drugi pokazuje różnicę wobec poprzedniego.</p>
+        <p><strong>Zostało</strong> to największy rozmiar własny. <strong>Urosło</strong> to przybyło od poprzedniego zrzutu. <strong>Zniknęło</strong> to ubyło sztuk albo bajtów, czyli to, co w międzyczasie prawdopodobnie zebrał GC. Nagłówki kolumn sortują tabelę.</p>
+        <p>Wyciek widać jako konstruktor, który rośnie między zrzutami i nie spada po zejściu z ekranu: Array, Object, string, ArrayBuffer albo węzły DOM. Zrób zrzut na ekranie, wyjdź z niego i zrób drugi.</p>
+        <p>Płaszczyzna wideo ma własną stertę, osobną od strony telewizora. Player i aplikacja nie dzielą tych liczb.</p>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -81,6 +81,7 @@ public sealed class AppServer : IDisposable
     public void StageReady() => _stageReady.Set();
     public event Action? ExitRequested;
     public event Action<string>? Log;
+    public event Action<string>? DebugReported;
 
     public void Start(string root, string appDirectory, TvProfile profile, bool pointerEnabled, bool debug = false, string videoComposition = "colorKey") =>
         Start(root, new AppSource(Path.GetFullPath(appDirectory), null), profile, pointerEnabled, debug, videoComposition);
@@ -236,6 +237,17 @@ public sealed class AppServer : IDisposable
         {
             using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
             Log?.Invoke(reader.ReadToEnd());
+            Write(context, 204, "text/plain", []);
+            return;
+        }
+
+        if (path == "/__emulator/debug" && context.Request.HttpMethod == "POST")
+        {
+            using var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8);
+            var body = reader.ReadToEnd();
+            if (body.Length > 64_000)
+                body = body.Substring(0, 64_000);
+            DebugReported?.Invoke(body);
             Write(context, 204, "text/plain", []);
             return;
         }

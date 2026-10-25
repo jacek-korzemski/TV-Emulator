@@ -45,7 +45,10 @@ public static class SessionPlanner
             electron.Add("--tv-scale=" + scaleText);
             electron.Add("--tv-user-data=" + userDataDir);
             if (debug)
+            {
+                electron.Add("--tv-switch=enable-precise-memory-info");
                 electron.Add("--tv-debug-port=9223");
+            }
             electron.Add("--tv-url=" + url);
             return electron;
         }
@@ -73,7 +76,10 @@ public static class SessionPlanner
             args.AddRange(engine.Args);
 
         if (debug)
+        {
+            args.Add("--enable-precise-memory-info");
             args.Add("--remote-debugging-port=9223");
+        }
 
         args.Add("--app=" + url);
         return args;

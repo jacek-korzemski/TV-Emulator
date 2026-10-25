@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
+using TvEmulator.Debug;
 using TvEmulator.Models;
 using TvEmulator.Services;
 
@@ -16,6 +17,9 @@ public partial class MainWindow : Window
     private EngineSession? _engine;
     private VideoPlane? _plane;
     private SessionLog? _sessionLog;
+    private DebugServer? _debugServer;
+    private CdpWatcher? _cdp;
+    private readonly CancellationTokenSource _debugStop = new();
     private DispatcherTimer? _attachTimer;
     private int _sessionState;
     private bool _cursorHidden;
@@ -57,6 +61,7 @@ public partial class MainWindow : Window
             DirectoryBox.Text = sample;
 
         _settingsBackground = Background;
+        _ = StartDebugPanel();
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -69,6 +74,11 @@ public partial class MainWindow : Window
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         EndSession(null);
+        _debugStop.Cancel();
+        var server = _debugServer;
+        _debugServer = null;
+        if (server is not null)
+            Task.Run(() => server.DisposeAsync().AsTask()).Wait(TimeSpan.FromSeconds(2));
         base.OnClosing(e);
     }
 
@@ -140,9 +150,11 @@ public partial class MainWindow : Window
             _server.Log += message =>
             {
                 _sessionLog?.Write(message);
+                _debugServer?.Hub.AddLog(message);
                 var shown = message.Length > 300 ? message.Substring(0, 300) : message;
                 Dispatcher.BeginInvoke(() => StatusText.Text = shown);
             };
+            _server.DebugReported += message => _debugServer?.Hub.AddShim(message);
             _server.Start(_root, source, profile, PointerBox.IsChecked == true, DebugBox.IsChecked == true, "colorKey");
 
             if (profile.Platform is "tizen" or "webos")
@@ -155,7 +167,11 @@ public partial class MainWindow : Window
                     _stage,
                     profile.Viewport,
                     DebugBox.IsChecked == true,
-                    message => _sessionLog?.Write(message));
+                    message =>
+                    {
+                        _sessionLog?.Write(message);
+                        _debugServer?.Hub.AddLog(message);
+                    });
             }
 
             var arguments = SessionPlanner.Arguments(
@@ -167,6 +183,14 @@ public partial class MainWindow : Window
                 source.LocalStartPath,
                 Path.Combine(_root, "shell", "electron"),
                 DebugBox.IsChecked == true);
+            var debug = DebugBox.IsChecked == true;
+            _debugServer?.Hub.BeginSession(profile.Id, profile.Label, profile.Engine, debug, _sessionLog?.FilePath, _plane is not null);
+            if (debug && _debugServer is not null)
+            {
+                _cdp = CdpWatcher.Start(_debugServer.Hub, _plane is not null);
+                _cdp.EngineLost += () => Dispatcher.BeginInvoke(() =>
+                    EndSession("Silnik przeglądarki padł. Sesja zamknięta, pasek zadań wrócił."));
+            }
             _engine = new EngineSession
             {
                 HostManagedWindow = !string.Equals(engine.Kind, "electron", StringComparison.Ordinal),
@@ -182,10 +206,13 @@ public partial class MainWindow : Window
         {
             _plane?.Dispose();
             _plane = null;
-            _server?.Dispose();
-            _server = null;
+            _cdp?.Dispose();
+            _cdp = null;
             _engine?.Dispose();
             _engine = null;
+            _server?.Dispose();
+            _server = null;
+            _debugServer?.Hub.EndSession();
             var failedLog = _sessionLog?.FilePath;
             _sessionLog = null;
             _sessionState = 0;
@@ -231,6 +258,11 @@ public partial class MainWindow : Window
         var engine = _engine;
         if (engine is null)
             return;
+        if (engine.HasExited)
+        {
+            EndSession("Silnik zamknął się sam.");
+            return;
+        }
 
         if (_enginePlaced)
         {
@@ -303,6 +335,7 @@ public partial class MainWindow : Window
 
         try
         {
+            Taskbar.Restore();
             _attachTimer?.Stop();
             _enginePlaced = false;
             var hwnd = new WindowInteropHelper(this).Handle;
@@ -320,10 +353,13 @@ public partial class MainWindow : Window
 
             _plane?.Dispose();
             _plane = null;
+            _cdp?.Dispose();
+            _cdp = null;
             _engine?.Stop();
             _engine = null;
             _server?.Dispose();
             _server = null;
+            _debugServer?.Hub.EndSession();
             Taskbar.Restore();
             var logPath = _sessionLog?.FilePath;
             _sessionLog = null;
@@ -333,6 +369,13 @@ public partial class MainWindow : Window
         }
         finally
         {
+            Taskbar.Restore();
+            if (_cursorHidden)
+            {
+                NativeMethods.ShowCursorAgain();
+                _cursorHidden = false;
+            }
+
             _sessionState = 0;
         }
     }
@@ -372,5 +415,28 @@ public partial class MainWindow : Window
     {
         public System.Windows.Forms.Screen Screen { get; } = screen;
         public override string ToString() => label;
+    }
+
+    private async Task StartDebugPanel()
+    {
+        try
+        {
+            var server = await DebugServer.StartAsync(Path.Combine(_root, "debug-ui"));
+            if (_debugStop.IsCancellationRequested)
+            {
+                await server.DisposeAsync();
+                return;
+            }
+
+            _debugServer = server;
+            var text = server.FormatAddresses();
+            await Dispatcher.InvokeAsync(() => DebugAddressText.Text = text);
+        }
+        catch (Exception ex)
+        {
+            if (_debugStop.IsCancellationRequested)
+                return;
+            await Dispatcher.InvokeAsync(() => DebugAddressText.Text = "Podgląd na żywo nie wystartował: " + ex.Message);
+        }
     }
 }

@@ -266,12 +266,30 @@
     } catch (ignoreUa) {}
   }
 
+  function postDebug(level, text, url, line, stack) {
+    var payload = "";
+    try {
+      payload = JSON.stringify({
+        kind: "console",
+        level: level,
+        text: text || "",
+        url: url || "",
+        line: line || 0,
+        stack: stack || ""
+      });
+    } catch (ignoreJson) {}
+    if (payload) {
+      post("/__emulator/debug", payload);
+    }
+  }
+
   function installDiagnostics() {
     if (!profile.debug) {
       return;
     }
     global.onerror = function (message, source, line) {
       post("/__emulator/log", "js-error " + message + " " + source + ":" + line);
+      postDebug("error", String(message), String(source || ""), line, "");
     };
     global.addEventListener("error", function (e) {
       var target = e.target || e.srcElement;
@@ -285,10 +303,14 @@
       global.addEventListener("unhandledrejection", function (e) {
         var reason = e && e.reason ? (e.reason.message || String(e.reason)) : "";
         post("/__emulator/log", "unhandledrejection " + reason);
+        postDebug("error", "unhandledrejection " + reason, String(global.location && global.location.href || ""), 0, "");
       });
     } catch (ignoreRejection) {}
     wrapConsole("error");
     wrapConsole("warn");
+    wrapConsole("log");
+    wrapConsole("info");
+    wrapConsole("debug");
   }
 
   function wrapConsole(level) {
@@ -306,6 +328,17 @@
         text += arguments[i];
       }
       post("/__emulator/log", "console." + level + " " + text);
+      var stack = "";
+      if (level === "error" || level === "warn") {
+        try {
+          stack = new Error().stack || "";
+        } catch (ignoreStack) {}
+      }
+      var href = "";
+      try {
+        href = String(global.location && global.location.href || "");
+      } catch (ignoreHref) {}
+      postDebug(level, text, href, 0, stack);
       try {
         return original.apply(global.console, arguments);
       } catch (ignoreApply) {

@@ -37,7 +37,7 @@ powershell -ExecutionPolicy Bypass -File tools\fetch-engines.ps1
 
 To trwa. Skrypt wypisuje `GET`, gdy coś pobiera, `UNZIP`, gdy rozpakowuje, i `READY`, gdy dana przeglądarka już jest na dysku. Na końcu ma być linia `FETCH_DONE`.
 
-Profile telewizorów używają przeglądarek `chromium-*`. Skrypt dociąga także `electron-*`, dlatego pobieranie jest dłuższe i większe, niż potrzeba do samych profili z listy. Zostaw je: skrypt i tak chce dojść do końca.
+Profile telewizorów używają tylko przeglądarek `chromium-*`.
 
 5. Uruchom program:
 
