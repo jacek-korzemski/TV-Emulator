@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     private double _settingsWidth;
     private double _settingsHeight;
     private System.Windows.Media.Brush _settingsBackground = System.Windows.Media.Brushes.Transparent;
+    private UserSettings _userSettings = new();
 
     public MainWindow()
     {
@@ -39,11 +40,7 @@ public partial class MainWindow : Window
         _root = RepoPaths.Root();
         _profiles = Catalog.LoadProfiles(_root).ToList();
         _engines = Catalog.LoadEngines(_root).ToList();
-        ProfileBox.ItemsSource = _profiles
-            .Select(profile => new ProfileChoice(profile, ProfileDetail(profile, _engines)))
-            .ToList();
-        if (_profiles.Count > 0)
-            ProfileBox.SelectedIndex = 0;
+        _userSettings = UserSettingsStore.Load();
 
         var index = 0;
         foreach (var screen in System.Windows.Forms.Screen.AllScreens)
@@ -56,12 +53,51 @@ public partial class MainWindow : Window
         if (MonitorBox.Items.Count > 0)
             MonitorBox.SelectedIndex = 0;
 
-        var sample = Path.Combine(_root, "samples", "tizen-hello");
-        if (Directory.Exists(sample))
-            DirectoryBox.Text = sample;
-
+        DirectoryBox.Text = UserSettingsStore.StartupApp(_userSettings, SampleApp());
         _settingsBackground = Background;
+        BindProfiles();
         _ = StartDebugPanel();
+    }
+
+    private void SettingsClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SettingsWindow(_root, _profiles, _engines, _userSettings) { Owner = this };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        var previousDefault = _userSettings.DefaultApp;
+        _userSettings = dialog.Result;
+        UserSettingsStore.Save(_userSettings);
+        DirectoryBox.Text = UserSettingsStore.NextAppField(
+            DirectoryBox.Text,
+            previousDefault,
+            SampleApp(),
+            _userSettings.DefaultApp);
+        BindProfiles();
+        if (ProfileBox.Items.Count > 0)
+            StatusText.Text = "Zapisano ustawienia.";
+    }
+
+    private void BindProfiles()
+    {
+        var selectedId = (ProfileBox.SelectedItem as ProfileChoice)?.Profile.Id;
+        var choices = UserSettingsStore.VisibleProfiles(_profiles, _userSettings)
+            .Select(profile => new ProfileChoice(profile, ProfileDetail(profile, _engines)))
+            .ToList();
+        ProfileBox.ItemsSource = choices;
+        var match = choices.FindIndex(choice => choice.Profile.Id == selectedId);
+        ProfileBox.SelectedIndex = match >= 0 ? match : choices.Count > 0 ? 0 : -1;
+        if (choices.Count == 0)
+        {
+            LimitsText.Text = "";
+            StatusText.Text = "Wszystkie profile są ukryte. Otwórz Ustawienia i włącz choć jeden.";
+        }
+    }
+
+    private string SampleApp()
+    {
+        var sample = Path.Combine(_root, "samples", "tizen-hello");
+        return Directory.Exists(sample) ? sample : "";
     }
 
     protected override void OnSourceInitialized(EventArgs e)

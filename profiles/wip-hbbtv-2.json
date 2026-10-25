@@ -1,6 +1,6 @@
 {
-  "id": "hbbtv-2",
-  "label": "HbbTV 1.5 (Chromium 53)",
+  "id": "wip-hbbtv-2",
+  "label": "WIP - HbbTV 1.5 (Chromium 53)",
   "platform": "hbbtv",
   "engine": "chromium-53",
   "player": "edge",

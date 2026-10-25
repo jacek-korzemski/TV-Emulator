@@ -2,6 +2,17 @@
   "entries": [
     {
       "date": "2026-10-25",
+      "title": "Startup settings and Edge video for Titan and Panasonic",
+      "items": [
+        "Ustawienia remembers a default app, a folder or an http(s) address, and fills it in at every start. Uncheck TV profiles you do not use and they leave the list; profiles added later stay visible until you hide them.",
+        "Titan OS and the 2016 Panasonic set play through the Edge picture under the page, because Chrome 122 and Firefox 44 have no Widevine CDM.",
+        "The Panasonic window hides the Firefox navigation bar, and hardware acceleration stays off so the video hole shows the Edge picture.",
+        "A clear stream starts without waiting for Widevine. A license request still opens the CDM, and the page reports Widevine variants as supported so they stay in the catalog.",
+        "The HbbTV profile is labeled WIP, and video/broadcast objects include fallback content so the broadcast picture stays visible."
+      ]
+    },
+    {
+      "date": "2026-10-25",
       "title": "More TV profiles and a universal VOD sample",
       "items": [
         "Profiles now cover Hisense VIDAA, Vizio SmartCast, Philips Saphi and Titan OS, HbbTV 1.5, Panasonic my Home Screen (Firefox 44), and Sony BRAVIA / Vewd, alongside the existing Tizen and webOS sets.",

@@ -46,6 +46,10 @@ public sealed class AppServer : IDisposable
         "<object\\b(?=[^>]*\\btype\\s*=\\s*[\"']?application/avplayer\\b)[^>]*>",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    private static readonly Regex BroadcastObject = new(
+        "<object\\b(?=[^>]*\\btype\\s*=\\s*[\"']?video/broadcast\\b)[^>]*>",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private HttpListener? _listener;
     private Thread? _thread;
     private readonly HttpClient _http = new(new HttpClientHandler { AllowAutoRedirect = false })
@@ -343,6 +347,7 @@ public sealed class AppServer : IDisposable
         var payload = new
         {
             platform = profile.Platform,
+            player = profile.Player,
             platformVersion = profile.PlatformVersion,
             userAgent = profile.UserAgent,
             keys = profile.Keys,
@@ -359,6 +364,8 @@ public sealed class AppServer : IDisposable
             _stageReady.Set();
         if (profile.Platform == "tizen")
             html = FillAvplayerObjects(html);
+        if (profile.Platform == "hbbtv")
+            html = FillBroadcastObjects(html);
         var snippet = "<script>window.__TV_EMULATOR_PROFILE__=" + json + ";</script><script src=\"/__emulator/platform.js\"></script>";
         var head = Regex.Match(html, "<head\\b[^>]*>", RegexOptions.IgnoreCase);
         if (head.Success)
@@ -370,6 +377,12 @@ public sealed class AppServer : IDisposable
     // fallback content, so AVPlay objects written in markup get their filler here.
     public static string FillAvplayerObjects(string html) =>
         AvplayerObject.Replace(html, match => match.Value + "<span data-tv-emulator=\"avplay\"></span>");
+
+    // Chromium paints "plugin missing" over an object whose type it does not know.
+    // Fallback content makes it skip the plugin lookup. The broadcast object is in the
+    // first HTML, so the filler has to be there before the parser sees the tag.
+    public static string FillBroadcastObjects(string html) =>
+        BroadcastObject.Replace(html, match => match.Value + "<span data-tv-emulator=\"broadcast\"></span>");
 
     private JsonNode ResolveAppInfo()
     {

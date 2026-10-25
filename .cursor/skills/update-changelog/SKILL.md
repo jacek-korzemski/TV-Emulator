@@ -1,8 +1,8 @@
 ---
 name: update-changelog
 description: >-
-  Drafts a plain-English changelog entry for the TV Emulator landing page from
-  changes that are not on master (or main). Use when the user runs
+  Writes a plain-English changelog entry to the top of docs/changelog.json
+  from changes that are not on master (or main). Use when the user runs
   /update-changelog or asks to update the landing-page changelog from pending
   git changes.
 disable-model-invocation: true
@@ -36,7 +36,7 @@ Read the diffs that explain behavior (not lockfiles, engine binaries, or `logs/`
 
 If the range and the working tree are empty, stop. Tell the user there is nothing pending. Do not add an entry.
 
-## Draft
+## Draft and write
 
 Read `docs/changelog.json` first. Do not add a second entry for a change that is already covered.
 
@@ -46,13 +46,11 @@ Write one new entry:
 - `title`: a short name for the change
 - `items`: 3–8 sentences a user can understand
 
-Group related commits into one entry. Prefer what changed for someone running the app. Drop typo-only and formatting-only noise. If the only pending work is that noise, say so and ask before writing an entry.
+Group related commits into one entry. Prefer what changed for someone running the app. Drop typo-only and formatting-only noise. If the only pending work is that noise, say so and do not add an entry.
 
-Show the draft in the chat. Write the file only after the user confirms, unless their message already told you to apply it.
+Prepend the entry to the `entries` array in the same turn. Do not wait for confirmation. Keep the JSON valid. Do not edit `docs/index.html` or `docs/styles.css` unless the page can no longer render the schema.
 
-## Write
-
-Prepend the entry to the `entries` array. Keep the JSON valid. Do not edit `docs/index.html` or `docs/styles.css` unless the page can no longer render the schema.
+Then show the user the entry that was written.
 
 Do not commit unless the user asks.
 

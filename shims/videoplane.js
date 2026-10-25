@@ -934,6 +934,7 @@
   let mseMode = false;
   let mseSource = null;
   let mseKeys = null;
+  let widevinePromise = null;
   const mseBuffers = new Map();
   const mseSessions = new Map();
   let pendingEme = [];
@@ -1078,6 +1079,7 @@
     mseSessions.clear();
     mseBuffers.clear();
     mseKeys = null;
+    widevinePromise = null;
     mseSource = null;
     try {
       video.pause();
@@ -1086,6 +1088,35 @@
       await video.setMediaKeys(null);
     } catch (ignore) {}
     video = replaceVideoElement(video);
+  };
+
+  const createWidevine = async () => {
+    let access = null;
+    try {
+      access = await navigator.requestMediaKeySystemAccess('com.widevine.alpha', [widevineConfig()]);
+    } catch (error) {
+      const plain = widevineConfig();
+      plain.audioCapabilities.forEach((item) => { delete item.robustness; });
+      plain.videoCapabilities.forEach((item) => { delete item.robustness; });
+      access = await navigator.requestMediaKeySystemAccess('com.widevine.alpha', [plain]);
+    }
+    const keys = await access.createMediaKeys();
+    await video.setMediaKeys(keys);
+    mseKeys = keys;
+  };
+
+  // Clear streams never touch the CDM. A Widevine refusal must not block them.
+  const ensureWidevine = async () => {
+    if (mseKeys) {
+      return;
+    }
+    if (!widevinePromise) {
+      widevinePromise = createWidevine().catch((error) => {
+        widevinePromise = null;
+        throw error;
+      });
+    }
+    await widevinePromise;
   };
 
   const openMse = async () => {
@@ -1101,19 +1132,7 @@
       }, { once: true });
       video.src = URL.createObjectURL(source);
     });
-    let access = null;
-    try {
-      access = await navigator.requestMediaKeySystemAccess('com.widevine.alpha', [widevineConfig()]);
-    } catch (error) {
-      const plain = widevineConfig();
-      plain.audioCapabilities.forEach((item) => { delete item.robustness; });
-      plain.videoCapabilities.forEach((item) => { delete item.robustness; });
-      access = await navigator.requestMediaKeySystemAccess('com.widevine.alpha', [plain]);
-    }
-    mseKeys = await access.createMediaKeys();
-    await video.setMediaKeys(mseKeys);
-    await flushEme();
-    emit('log', { text: 'widevine mse ready' });
+    emit('log', { text: 'mse ready' });
     emit('mse-ready', {});
   };
 
@@ -1396,11 +1415,9 @@
         return;
       }
       if (op === 'generate') {
-        if (!mseKeys) {
-          pendingEme.push(command);
-          return;
-        }
+        await ensureWidevine();
         await generateWidevine(command);
+        await flushEme();
         return;
       }
       if (op === 'update') {
@@ -1412,10 +1429,7 @@
         return;
       }
       if (op === 'cert') {
-        if (!mseKeys) {
-          pendingEme.push(command);
-          return;
-        }
+        await ensureWidevine();
         await applyCertificate(command);
       }
     }

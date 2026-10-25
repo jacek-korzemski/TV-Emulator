@@ -1,0 +1,87 @@
+<Window x:Class="TvEmulator.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Ustawienia"
+        Height="720"
+        Width="700"
+        MinHeight="520"
+        MinWidth="560"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="#1B1D22"
+        Foreground="#F3F1EA"
+        FontFamily="Segoe UI"
+        FontSize="14">
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Background="#121418" Padding="20,14">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Content="Zapisz" MinWidth="120" Margin="8,0,0,0"
+                Padding="18,10" FontSize="16" FontWeight="SemiBold"
+                Background="#F2C14E" Foreground="#1B1D22" BorderThickness="0" Cursor="Hand"
+                IsDefault="True" Click="SaveClick"/>
+        <Button DockPanel.Dock="Right" Content="Anuluj" MinWidth="100" Padding="14,8"
+                Background="#343842" Foreground="#F3F1EA" BorderThickness="0" Cursor="Hand"
+                IsCancel="True"/>
+        <TextBlock x:Name="SettingsStatus" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="#E7A2A2"/>
+      </DockPanel>
+    </Border>
+
+    <Grid Margin="28">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+
+      <TextBlock Grid.Row="0" Text="Ustawienia" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,6"/>
+      <TextBlock Grid.Row="1"
+                 Text="Domyślna aplikacja wraca po każdym uruchomieniu. Odznaczone profile znikają z listy na starcie."
+                 Foreground="#C8C4B8" TextWrapping="Wrap" Margin="0,0,0,22"/>
+
+      <StackPanel Grid.Row="2" Margin="0,0,0,18">
+        <TextBlock Text="Domyślna aplikacja" Margin="0,0,0,6"/>
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="Przeglądaj" Margin="8,0,0,0" Padding="14,6"
+                  Click="BrowseClick" Background="#343842" Foreground="#F3F1EA" BorderThickness="0" Cursor="Hand"/>
+          <TextBox x:Name="AppBox" Padding="8,6" CaretBrush="#F3F1EA"
+                   Background="#262A31" Foreground="#F3F1EA" BorderThickness="0"/>
+        </DockPanel>
+        <TextBlock TextWrapping="Wrap" Margin="0,8,0,0" Foreground="#9A968C"
+                   Text="Katalog z index.html albo adres http(s). Puste pole przywraca samples\tizen-hello."/>
+      </StackPanel>
+
+      <DockPanel Grid.Row="3" Margin="0,0,0,8">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <Button Content="Pokaż wszystkie" Padding="10,4" Click="ShowAllClick"
+                  Background="#343842" Foreground="#F3F1EA" BorderThickness="0" Cursor="Hand"/>
+          <Button Content="Ukryj wszystkie" Margin="8,0,0,0" Padding="10,4" Click="HideAllClick"
+                  Background="#343842" Foreground="#F3F1EA" BorderThickness="0" Cursor="Hand"/>
+        </StackPanel>
+        <TextBlock Text="Profile telewizorów" VerticalAlignment="Center"/>
+      </DockPanel>
+
+      <DockPanel Grid.Row="4">
+        <TextBlock x:Name="ProfileCountText" DockPanel.Dock="Bottom" Margin="0,8,0,0" Foreground="#C8C4B8"/>
+        <Border Background="#262A31" Padding="12,4">
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="ProfileList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <CheckBox IsChecked="{Binding Visible, Mode=TwoWay}" Margin="0,7" Foreground="#F3F1EA"
+                            Checked="ProfileToggled" Unchecked="ProfileToggled">
+                    <StackPanel Margin="2,0,0,0">
+                      <TextBlock Text="{Binding Label}"/>
+                      <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="#6E6A60"/>
+                    </StackPanel>
+                  </CheckBox>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Border>
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</Window>

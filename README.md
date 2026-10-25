@@ -24,14 +24,14 @@ A short public overview lives at <https://jacek-korzemski.github.io/TV-Emulator/
 | Vizio SmartCast | 47, 56, 63 | edge |
 | Philips NetTV / early Saphi | 49 | edge |
 | Philips Saphi 2020–2022 | 84 | edge |
-| Titan OS | Chrome 122 | page |
+| Titan OS | Chrome 122 | edge |
 | HbbTV 1.5 | 53 | edge |
-| Panasonic my Home Screen (2016) | Firefox 44 | page |
+| Panasonic my Home Screen (2016) | Firefox 44 | edge |
 | Sony BRAVIA / Vewd | 47 | edge |
 
 The page runs in that pinned browser, with a shim for the set (`tizen`, `webapis`, `webOS`, VIDAA `Hisense_Get*`, `VIZIO`, Philips `DeviceInfo`, HbbTV `video/broadcast`, `Panasonic`, or `Sony`) plus the remote key codes.
 
-`edge` means the picture is the WebView2 plane under the page. `page` means the page's own engine plays it. Titan uses Chrome for Testing 122, which can hold Widevine itself, so it does not open the video plane. Public Chromium snapshots still have no H.264 and no Widevine, so VIDAA U6 stays on `edge` even though that generation's Chrome is newer. Panasonic is Firefox 44 (Firefox OS 2.5). That build has no Chrome DevTools Protocol, so the live console, network, and memory tabs stay empty; the session log still works. Sony is Chromium 47 with an OMI user agent. The Vewd TV binary is not public.
+`edge` means the picture is the WebView2 plane under the page. `page` means the page's own engine plays it. Titan still runs the page in Chrome for Testing 122, but that build has no Widevine CDM, so the picture goes through the Edge plane like the older Chromium sets. Public Chromium snapshots still have no H.264 and no Widevine, so VIDAA U6 stays on `edge` even though that generation's Chrome is newer. Panasonic is Firefox 44 (Firefox OS 2.5). That build has no Widevine CDM, so the picture uses the Edge plane. It also has no Chrome DevTools Protocol, so the live console, network, and memory tabs stay empty; the session log still works. Sony is Chromium 47 with an OMI user agent. The Vewd TV binary is not public.
 
 Video does not play inside that old Chromium. Those builds lack the codecs and DRM a TV app expects.
 
@@ -88,6 +88,7 @@ Next time: open PowerShell in the same folder and run only `dotnet run`.
 - **TV profile.** The name and year are on the first line. Under that: the Chromium version and the playback method, `avplay` on Tizen, `edge` on webOS.
 - **App.** A folder that contains `index.html`, or an address starting with `http://` or `https://`. **Browse** picks a folder.
 - **Monitor.** The screen for the 16:9 picture. With two monitors, pick the one you are looking at.
+- **Settings (Ustawienia).** Saves a default app, a folder or an `http(s)` address, and fills it in at every start. Uncheck TV profiles you do not use and they leave the profile list. New profiles stay visible until you hide them. Both live in `%LOCALAPPDATA%\TvEmulator\settings.json`. Leave at least one profile visible.
 - **Magic remote pointer.** When checked, the cursor is visible.
 - **Diagnostic log.** On at startup. The program writes `logs\session-….log`. After a failure, the bar at the bottom of the window shows that path.
 
@@ -95,7 +96,7 @@ The RAM and CPU line only reports the limit stored in the profile. The program d
 
 ### What to open first
 
-On startup the app field is already `samples\tizen-hello`. That is a simple page with a title and key codes, and no video. Pick a Tizen profile and press **Launch** (`Uruchom`).
+On startup the app field is the default saved in **Ustawienia**. When no default is set, it is `samples\tizen-hello`: a simple page with a title and key codes, and no video. Pick a Tizen profile and press **Launch** (`Uruchom`).
 
 To see video, point at `samples\tizen-avplay`. You need internet. Enter or the `1` key plays a stream without DRM.
 
@@ -175,7 +176,7 @@ The session diagnostic lines, the same stream that lands in `logs\session-….lo
 
 **Chromium failed to start, or there is no free localhost port.** A previous session is still running. Return to it with **Ctrl+Shift+Q**, or close the program window and try again.
 
-**You want to sign in again.** Close the program, then delete `%LOCALAPPDATA%\TvEmulator\userdata`. You can paste `%LOCALAPPDATA%\TvEmulator` into the Explorer address bar.
+**You want to sign in again.** Close the program, then delete `%LOCALAPPDATA%\TvEmulator\userdata`. You can paste `%LOCALAPPDATA%\TvEmulator` into the Explorer address bar. The default app and hidden profiles are in `settings.json` beside that folder. Deleting only `userdata` leaves them in place.
 
 ## Publish the landing page
 
@@ -189,7 +190,7 @@ The first successful run needs GitHub Pages to use **GitHub Actions** as the sou
 
 ## Changelog
 
-Landing-page notes live in `docs/changelog.json`. In Cursor, `/update-changelog` reads changes that are not on `master` (or `main` if there is no master), writes them in plain language, and prepends one entry after you confirm.
+Landing-page notes live in `docs/changelog.json`. In Cursor, `/update-changelog` reads changes that are not on `master` (or `main` if there is no master), writes them in plain language, and prepends one entry at the top of that file.
 
 ## Tests
 

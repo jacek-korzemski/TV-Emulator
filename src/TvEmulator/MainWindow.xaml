@@ -14,6 +14,9 @@
   <DockPanel>
     <Border x:Name="Footer" DockPanel.Dock="Bottom" Background="#121418" Padding="20,14">
       <DockPanel>
+        <Button x:Name="SettingsButton" DockPanel.Dock="Left" Content="Ustawienia" MinWidth="120" Margin="0,0,16,0"
+                Padding="14,8" Background="#343842" Foreground="#F3F1EA" BorderThickness="0" Cursor="Hand"
+                Click="SettingsClick"/>
         <Button x:Name="StartButton" DockPanel.Dock="Right" Content="Uruchom" MinWidth="140" Margin="16,0,0,0"
                 Padding="18,10" FontSize="16" FontWeight="SemiBold"
                 Background="#F2C14E" Foreground="#1B1D22" BorderThickness="0" Cursor="Hand"
@@ -58,7 +61,7 @@
         <DockPanel>
           <Button DockPanel.Dock="Right" Content="Przeglądaj" Margin="8,0,0,0" Padding="14,6"
                   Click="BrowseClick" Background="#343842" Foreground="#F3F1EA" BorderThickness="0"/>
-          <TextBox x:Name="DirectoryBox" Padding="8,6" Background="#262A31" Foreground="#F3F1EA" BorderThickness="0"/>
+          <TextBox x:Name="DirectoryBox" Padding="8,6" CaretBrush="#F3F1EA" Background="#262A31" Foreground="#F3F1EA" BorderThickness="0"/>
         </DockPanel>
       </StackPanel>
 

@@ -1619,7 +1619,8 @@
         return false;
       }
       var value = arguments.length > 1 ? type : node.getAttribute("type");
-      return String(value).toLowerCase() === "application/avplayer";
+      var mime = String(value).toLowerCase();
+      return mime === "application/avplayer" || mime === "video/broadcast";
     }
 
     function fill(node) {
@@ -1629,7 +1630,8 @@
         }
       }
       var filler = document.createElement("span");
-      origSetAttribute.call(filler, "data-tv-emulator", "avplay");
+      var mime = String(node.getAttribute("type") || "").toLowerCase();
+      origSetAttribute.call(filler, "data-tv-emulator", mime === "video/broadcast" ? "broadcast" : "avplay");
       origAppend.call(node, filler);
     }
 
@@ -2514,6 +2516,20 @@
       };
     }
 
+    function defineValue(object, name, value) {
+      try {
+        Object.defineProperty(object, name, {
+          configurable: true,
+          writable: true,
+          value: value
+        });
+      } catch (ignore) {
+        try {
+          object[name] = value;
+        } catch (ignoreAssign) {}
+      }
+    }
+
     function installMseBridge() {
       function TvMediaSource() {
         this.readyState = "closed";
@@ -2571,17 +2587,17 @@
       if (nativeMediaSource) {
         TvMediaSource.MEDIA_SOURCE_TYPE = "tv-emulator";
       }
-      global.MediaSource = TvMediaSource;
+      defineValue(global, "MediaSource", TvMediaSource);
       if (global.URL && nativeCreateUrl) {
-        global.URL.createObjectURL = function (object) {
+        defineValue(global.URL, "createObjectURL", function (object) {
           if (object && object.__tvMse) {
             var url = "blob:tv-emulator/" + object._id;
             mseByUrl[url] = object;
             return url;
           }
           return nativeCreateUrl.apply(global.URL, arguments);
-        };
-        global.URL.revokeObjectURL = function (url) {
+        });
+        defineValue(global.URL, "revokeObjectURL", function (url) {
           if (isPlaneUrl(url)) {
             delete mseByUrl[url];
             return;
@@ -2589,7 +2605,7 @@
           if (nativeRevokeUrl) {
             nativeRevokeUrl.apply(global.URL, arguments);
           }
-        };
+        });
       }
     }
 
@@ -2600,20 +2616,39 @@
       }
       var nativeRequest = navigatorObject.requestMediaKeySystemAccess;
       var nativeSetMediaKeys = global.HTMLMediaElement && global.HTMLMediaElement.prototype.setMediaKeys;
-      if (global.HTMLMediaElement && nativeSetMediaKeys) {
-        global.HTMLMediaElement.prototype.setMediaKeys = function (keys) {
+      // Firefox 44 has no unprefixed EME. Shaka still calls setMediaKeys, and its
+      // nop polyfill replaces requestMediaKeySystemAccess with a rejection unless
+      // MediaKeySystemAccess.prototype.getConfiguration already exists.
+      if (typeof global.MediaKeySystemAccess !== "function") {
+        global.MediaKeySystemAccess = function () {};
+      }
+      if (!global.MediaKeySystemAccess.prototype.getConfiguration) {
+        defineValue(global.MediaKeySystemAccess.prototype, "getConfiguration", function () {
+          return {};
+        });
+      }
+      if (typeof global.MediaKeys !== "function") {
+        global.MediaKeys = function () {};
+      }
+      if (global.HTMLMediaElement) {
+        defineValue(global.HTMLMediaElement.prototype, "setMediaKeys", function (keys) {
           if (keys && keys.__tvEme) {
             this.__tvMediaKeys = keys;
+            defineValue(this, "mediaKeys", keys);
             return Promise.resolve();
           }
           if (!keys && this.__tvMediaKeys) {
             this.__tvMediaKeys = null;
+            defineValue(this, "mediaKeys", null);
             return Promise.resolve();
           }
-          return nativeSetMediaKeys.apply(this, arguments);
-        };
+          if (nativeSetMediaKeys) {
+            return nativeSetMediaKeys.apply(this, arguments);
+          }
+          return Promise.resolve();
+        });
       }
-      navigatorObject.requestMediaKeySystemAccess = function (keySystem, configs) {
+      defineValue(navigatorObject, "requestMediaKeySystemAccess", function (keySystem, configs) {
         if (keySystem === "com.widevine.alpha") {
           var requested = configs && configs.length ? configs[0] : {};
           return Promise.resolve(fakeAccess(requested));
@@ -2622,23 +2657,58 @@
           return nativeRequest.apply(navigatorObject, arguments);
         }
         return Promise.reject(new Error("unsupported key system"));
-      };
+      });
 
-      function fakeAccess(requested) {
-        var config = {};
+      function copyFields(source) {
+        var copy = {};
         var key;
-        for (key in requested) {
-          if (Object.prototype.hasOwnProperty.call(requested, key)) {
-            config[key] = requested[key];
+        if (!source) {
+          return copy;
+        }
+        for (key in source) {
+          if (Object.prototype.hasOwnProperty.call(source, key)) {
+            copy[key] = source[key];
           }
         }
+        return copy;
+      }
+
+      function stampCapabilities(list) {
+        if (!list || !list.length) {
+          return list;
+        }
+        var copy = [];
+        var i;
+        for (i = 0; i < list.length; i++) {
+          var item = copyFields(list[i]);
+          if (item.encryptionScheme == null) {
+            item.encryptionScheme = "cenc";
+          }
+          copy.push(item);
+        }
+        return copy;
+      }
+
+      function configurationWithScheme(source) {
+        var copy = copyFields(source);
+        if (source && source.videoCapabilities) {
+          copy.videoCapabilities = stampCapabilities(source.videoCapabilities);
+        }
+        if (source && source.audioCapabilities) {
+          copy.audioCapabilities = stampCapabilities(source.audioCapabilities);
+        }
+        return copy;
+      }
+
+      function fakeAccess(requested) {
+        var config = copyFields(requested);
         if (!config.sessionTypes) {
           config.sessionTypes = ["temporary"];
         }
         return {
           keySystem: "com.widevine.alpha",
           __tvEme: true,
-          getConfiguration: function () { return config; },
+          getConfiguration: function () { return configurationWithScheme(config); },
           createMediaKeys: function () { return Promise.resolve(fakeKeys()); }
         };
       }
@@ -2701,6 +2771,64 @@
         session.load = function () { return Promise.resolve(false); };
         return session;
       }
+
+      // Chromium 66+ answers decodingInfo itself. With no CDM that answer is
+      // supported:false, and Shaka drops the variant even after a key-system
+      // access is attached. Edge is the decoder, so Widevine stays supported.
+      if (!navigatorObject.mediaCapabilities) {
+        navigatorObject.mediaCapabilities = {};
+      }
+      var nativeDecodingInfo = navigatorObject.mediaCapabilities.decodingInfo;
+      var capabilities = navigatorObject.mediaCapabilities;
+      defineValue(navigatorObject, "mediaCapabilities", capabilities);
+      defineValue(capabilities, "decodingInfo", function (config) {
+        var keyConfig = config && config.keySystemConfiguration;
+        if (!keyConfig || keyConfig.keySystem !== "com.widevine.alpha") {
+          if (nativeDecodingInfo) {
+            try {
+              return nativeDecodingInfo.apply(capabilities, arguments);
+            } catch (ignore) {}
+          }
+          return Promise.resolve({
+            supported: true,
+            powerEfficient: true,
+            smooth: true,
+            keySystemAccess: null
+          });
+        }
+        var requested = {
+          initDataTypes: keyConfig.initDataType ? [keyConfig.initDataType] : ["cenc"],
+          audioCapabilities: [],
+          videoCapabilities: [],
+          distinctiveIdentifier: keyConfig.distinctiveIdentifier || "optional",
+          persistentState: keyConfig.persistentState || "optional",
+          sessionTypes: keyConfig.sessionTypes || ["temporary"]
+        };
+        if (config.audio || keyConfig.audio) {
+          requested.audioCapabilities.push({
+            contentType: (config.audio && config.audio.contentType) || "audio/mp4",
+            robustness: (keyConfig.audio && keyConfig.audio.robustness) || ""
+          });
+        }
+        if (config.video || keyConfig.video) {
+          requested.videoCapabilities.push({
+            contentType: (config.video && config.video.contentType) || "video/mp4",
+            robustness: (keyConfig.video && keyConfig.video.robustness) || ""
+          });
+        }
+        if (!requested.audioCapabilities.length && !requested.videoCapabilities.length) {
+          requested.videoCapabilities.push({
+            contentType: "video/mp4; codecs=\"avc1.42E01E\"",
+            robustness: ""
+          });
+        }
+        return Promise.resolve({
+          supported: true,
+          powerEfficient: true,
+          smooth: true,
+          keySystemAccess: fakeAccess(requested)
+        });
+      });
     }
 
     function onPlaneEvent(evt) {
@@ -2873,6 +3001,7 @@
   }
 
   function installHbbtv() {
+    installPlayerFallback();
     var keyColor = "#010001";
     var style = document.createElement("style");
     style.setAttribute("data-tv-emulator", "hbbtv");

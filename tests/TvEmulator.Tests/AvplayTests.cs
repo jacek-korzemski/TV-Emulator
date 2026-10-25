@@ -221,7 +221,22 @@ public class AvplayTests
         Assert.Contains("getAttribute(\"data-tv-hole\") === \"widevine\"", shim);
         Assert.DoesNotContain("createAvplay()", playback);
         Assert.DoesNotContain("webapis", playback);
+        Assert.Contains("function defineValue(", playback);
+        Assert.Contains("defineValue(global, \"MediaSource\"", playback);
+        Assert.Contains("defineValue(navigatorObject, \"requestMediaKeySystemAccess\"", playback);
+        Assert.Contains("encryptionScheme = \"cenc\"", playback);
+        Assert.Contains("keySystem !== \"com.widevine.alpha\"", playback);
+        Assert.Contains("supported: true", playback);
+        Assert.Contains("MediaKeySystemAccess.prototype.getConfiguration", playback);
+        Assert.Contains("if (nativeSetMediaKeys)", playback);
         Assert.Contains("navigator.requestMediaKeySystemAccess('com.widevine.alpha'", plane);
+        var openAt = plane.IndexOf("const openMse =", StringComparison.Ordinal);
+        var addAt = plane.IndexOf("const addMseBuffer =", StringComparison.Ordinal);
+        Assert.True(openAt >= 0 && addAt > openAt);
+        var openMse = plane.Substring(openAt, addAt - openAt);
+        Assert.Contains("emit('mse-ready'", openMse);
+        Assert.DoesNotContain("requestMediaKeySystemAccess", openMse);
+        Assert.Contains("const ensureWidevine", plane);
         Assert.DoesNotContain("com.widevine.alpha'] =", plane);
         var seekMseAt = plane.IndexOf("const seekMse =", StringComparison.Ordinal);
         var seekToAt = plane.IndexOf("const seekTo =", StringComparison.Ordinal);
@@ -314,5 +329,25 @@ public class AvplayTests
             "<body><object id=\"av\" TYPE='application/avplayer' style=\"width:100%\"><span data-tv-emulator=\"avplay\"></span></object>"
             + "<object type=\"application/pdf\"></object></body>",
             filled);
+    }
+
+    [Fact]
+    public void MarkupBroadcastObjectsGetFallbackContentBeforeThePluginLookup()
+    {
+        var html = "<body><object id=\"broadcast\" type=\"video/broadcast\" data=\"https://example.test/stream.mpd\"></object>"
+            + "<object type=\"application/pdf\"></object></body>";
+
+        var filled = AppServer.FillBroadcastObjects(html);
+
+        Assert.Contains("<object id=\"broadcast\" type=\"video/broadcast\" data=\"https://example.test/stream.mpd\"><span data-tv-emulator=\"broadcast\"></span></object>", filled);
+        Assert.Contains("<object type=\"application/pdf\"></object>", filled);
+        Assert.DoesNotContain("pdf\"><span", filled);
+
+        var shim = File.ReadAllText(Path.Combine(RepoPaths.Root(), "shims", "platform.js"));
+        var hbbtvAt = shim.IndexOf("function installHbbtv()", StringComparison.Ordinal);
+        Assert.True(hbbtvAt > 0);
+        var hbbtv = shim.Substring(hbbtvAt, 80);
+        Assert.Contains("installPlayerFallback();", hbbtv);
+        Assert.Contains("mime === \"video/broadcast\"", shim);
     }
 }

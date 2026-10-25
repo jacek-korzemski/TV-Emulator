@@ -104,8 +104,8 @@ public class EmulatorTests
         Assert.Contains(profiles, profile => profile.Id == "tizen-2019" && profile.Engine == "chromium-63" && profile.Player == "avplay");
         Assert.Contains(profiles, profile => profile.Id == "tizen-2022" && profile.Engine == "chromium-85" && profile.PlatformVersion == "6.5" && profile.Player == "avplay");
         Assert.Contains(profiles, profile => profile.Id == "vidaa-u6" && profile.Engine == "chromium-88" && profile.Player == "edge");
-        Assert.Contains(profiles, profile => profile.Id == "titan-122" && profile.Engine == "chrome-122" && profile.Player == "page");
-        Assert.Contains(profiles, profile => profile.Id == "panasonic-2016" && profile.Engine == "firefox-44" && profile.Player == "page");
+        Assert.Contains(profiles, profile => profile.Id == "titan-122" && profile.Engine == "chrome-122" && profile.Player == "edge");
+        Assert.Contains(profiles, profile => profile.Id == "panasonic-2016" && profile.Engine == "firefox-44" && profile.Player == "edge");
         Assert.All(profiles, profile =>
         {
             Assert.Null(profile.MemoryMb);
@@ -130,7 +130,7 @@ public class EmulatorTests
             var expectedMilestone = profile.Id switch
             {
                 "tizen-2017" or "smartcast-47" or "sony-vewd-47" => 47,
-                "webos-4" or "hbbtv-2" => 53,
+                "webos-4" or "wip-hbbtv-2" => 53,
                 "tizen-2018" or "smartcast-56" => 56,
                 "tizen-2019" or "smartcast-63" => 63,
                 "tizen-2022" => 85,
@@ -261,6 +261,7 @@ public class EmulatorTests
         Assert.Contains("/__emulator/platform.js", html);
         Assert.Contains("hello", html);
         Assert.Contains("\"platform\":\"tizen\"", compact);
+        Assert.Contains("\"player\":\"avplay\"", compact);
         Assert.Contains("\"platformVersion\":\"3.0\"", compact);
         Assert.Contains("\"videoComposition\":\"colorKey\"", compact);
         Assert.Contains("\"id\":\"com.example\"", compact);
@@ -448,6 +449,24 @@ public class EmulatorTests
         Assert.Contains("SameSite=Lax", cookie);
         Assert.DoesNotContain("Secure", cookie);
         Assert.DoesNotContain("Domain", cookie);
+    }
+
+    [Fact]
+    public void FirefoxProfileHidesTheNavigationBar()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "tv-emulator-firefox-" + Guid.NewGuid().ToString("N"));
+        FirefoxProfile.Prepare(dir, "Mozilla/5.0 (Firefox)");
+        var cssPath = Path.Combine(dir, "chrome", "userChrome.css");
+        var bytes = File.ReadAllBytes(cssPath);
+        var css = Encoding.UTF8.GetString(bytes);
+        Assert.NotEqual(0xEF, bytes[0]);
+        Assert.Contains("#navigator-toolbox", css);
+        Assert.Contains("#browser-bottombox", css);
+        Assert.Contains("visibility: collapse", css);
+        var prefs = File.ReadAllText(Path.Combine(dir, "user.js"));
+        Assert.Contains("general.useragent.override", prefs);
+        Assert.Contains("layers.acceleration.disabled\", true", prefs);
+        Assert.Contains("gfx.direct2d.disabled\", true", prefs);
     }
 
     [Fact]
