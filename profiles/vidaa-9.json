@@ -1,0 +1,33 @@
+{
+  "id": "vidaa-9",
+  "label": "Hisense VIDAA 9 (2025)",
+  "platform": "vidaa",
+  "engine": "chromium-111",
+  "player": "edge",
+  "userAgent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.5563.146 Odin/111.5563.5.1 Safari/537.36 Model/VIDAA-MTK9618 VIDAA/9.0(Hisense;SmartTV;65U65QEVS;MTK9618/V0000.09.09P.P0930;UHD;65U6QE;)",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "9.0",
+  "keys": {
+    "back": 8,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "65U6QE",
+    "modelCode": "MTK9618",
+    "firmware": "V0000.09.09P.P0930",
+    "duid": "EMULATOR-VIDAA-9",
+    "uhd": true,
+    "brand": "Hisense"
+  }
+}

@@ -74,6 +74,8 @@
       installHbbtv();
     } else if (profile.platform === "panasonic") {
       installPanasonic();
+    } else if (profile.platform === "firetv") {
+      installFireTv();
     } else if (profile.platform === "sony") {
       installSony();
     }
@@ -2978,6 +2980,35 @@
     global.Hisense_GetBrand = function () { return product.brand || "Hisense"; };
     global.Hisense_Get4KSupportState = function () { return product.uhd === true; };
     global.Hisense_GetCountryCode = function () { return "POL"; };
+    global.Hisense_GetChipSetName = function () { return product.modelCode || ""; };
+    global.Hisense_GetOSVersion = function () { return profile.platformVersion || ""; };
+    global.Hisense_GetApiVersion = function () { return profile.platformVersion || ""; };
+    global.Hisense_GetResolution = function () { return product.uhd === true ? "3840x2160" : "1920x1080"; };
+    global.Hisense_GetSupportForHDR = function () { return product.uhd === true ? "HDR10" : ""; };
+    global.Hisense_GetChromiumVersion = function () { return chromiumToken(profile.userAgent); };
+    global.Hisense_GetMenuLanguageCode = function () { return "pol"; };
+  }
+
+  function chromiumToken(userAgent) {
+    var ua = userAgent || "";
+    var marker = "Chrome/";
+    var at = ua.indexOf(marker);
+    var rest;
+    var end;
+    if (at < 0) {
+      return "";
+    }
+    rest = ua.substring(at + marker.length);
+    end = rest.indexOf(" ");
+    return end < 0 ? rest : rest.substring(0, end);
+  }
+
+  /*
+   * A Fire TV HTML5 page recognizes the set from the user agent: AmazonWebAppPlatform
+   * plus a model that starts with AFT. It does not get a device object. Back is keyCode 4,
+   * taken from the profile like the other remote keys.
+   */
+  function installFireTv() {
   }
 
   function installSmartCast() {

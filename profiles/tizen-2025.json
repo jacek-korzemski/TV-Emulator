@@ -1,0 +1,33 @@
+{
+  "id": "tizen-2025",
+  "label": "Samsung Tizen 9.0 (2025)",
+  "platform": "tizen",
+  "engine": "chrome-120",
+  "player": "avplay",
+  "userAgent": "Mozilla/5.0 (SMART-TV; LINUX; Tizen 9.0) AppleWebKit/537.36 (KHTML, like Gecko) 120.0.6099.5/9.0 TV Safari/537.36",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "9.0",
+  "keys": {
+    "back": 10009,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "QE65QN90F",
+    "modelCode": "QE65QN90F",
+    "firmware": "T-EMULATOR-2025",
+    "duid": "EMULATOR-TIZEN-2025",
+    "uhd": true,
+    "brand": "Samsung"
+  }
+}

@@ -2,6 +2,15 @@
   "entries": [
     {
       "date": "2026-10-26",
+      "title": "Tizen 9, VIDAA 9, and Panasonic Fire TV",
+      "items": [
+        "Samsung Tizen 9.0 (2025) is in the profile list. The page runs on Chrome 120 and the picture still goes through avplay.",
+        "Hisense VIDAA 9 (2025) runs on Chromium 111, with the picture on the Edge plane. VIDAA profiles also answer chipset, OS version, resolution, HDR, Chromium version, and menu language.",
+        "Panasonic 2025 is Fire TV, not my Home Screen. The page runs in Chrome 122, the picture goes through Edge, and Back is keyCode 4. A page recognizes the set from the AmazonWebAppPlatform user agent."
+      ]
+    },
+    {
+      "date": "2026-10-26",
       "title": "Optional pace and memory cap",
       "items": [
         "Moc telewizora, under the profile list, can slow the browser process toward the selected television and cap its memory.",

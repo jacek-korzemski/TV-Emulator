@@ -150,9 +150,12 @@ public class EmulatorTests
         Assert.Contains(profiles, profile => profile.Id == "tizen-2018" && profile.Engine == "chromium-56" && profile.Player == "avplay");
         Assert.Contains(profiles, profile => profile.Id == "tizen-2019" && profile.Engine == "chromium-63" && profile.Player == "avplay");
         Assert.Contains(profiles, profile => profile.Id == "tizen-2022" && profile.Engine == "chromium-85" && profile.PlatformVersion == "6.5" && profile.Player == "avplay");
+        Assert.Contains(profiles, profile => profile.Id == "tizen-2025" && profile.Engine == "chrome-120" && profile.PlatformVersion == "9.0" && profile.Player == "avplay");
         Assert.Contains(profiles, profile => profile.Id == "vidaa-u6" && profile.Engine == "chromium-88" && profile.Player == "edge");
+        Assert.Contains(profiles, profile => profile.Id == "vidaa-9" && profile.Engine == "chromium-111" && profile.PlatformVersion == "9.0" && profile.Player == "edge");
         Assert.Contains(profiles, profile => profile.Id == "titan-122" && profile.Engine == "chrome-122" && profile.Player == "edge");
         Assert.Contains(profiles, profile => profile.Id == "panasonic-2016" && profile.Engine == "firefox-44" && profile.Player == "edge");
+        Assert.Contains(profiles, profile => profile.Id == "panasonic-2025" && profile.Engine == "chrome-122" && profile.Platform == "firetv" && profile.Player == "edge" && profile.Keys.Back == 4);
         Assert.All(profiles, profile =>
         {
             Assert.Null(profile.MemoryMb);
@@ -165,7 +168,7 @@ public class EmulatorTests
         Assert.All(profiles.Where(profile => profile.Id != "tizen-2018"), profile => Assert.Empty(profile.Quirks.DeleteGlobals));
 
         var engines = Catalog.LoadEngines(root);
-        Assert.Equal(11, engines.Count);
+        Assert.Equal(13, engines.Count);
         Assert.Equal("chromium", Assert.Single(engines, item => item.Id == "chromium-47").Kind);
         Assert.Equal("firefox", Assert.Single(engines, item => item.Id == "firefox-44").Kind);
         Assert.DoesNotContain(engines, item => item.Kind == "electron");
@@ -181,11 +184,13 @@ public class EmulatorTests
                 "tizen-2018" or "smartcast-56" => 56,
                 "tizen-2019" or "smartcast-63" => 63,
                 "tizen-2022" => 85,
+                "tizen-2025" => 120,
                 "saphi-49" => 49,
                 "vidaa-u2" => 74,
                 "saphi-84" => 84,
                 "vidaa-u6" => 88,
-                "titan-122" => 122,
+                "vidaa-9" => 111,
+                "titan-122" or "panasonic-2025" => 122,
                 "panasonic-2016" => 44,
                 _ => throw new InvalidOperationException("Nieznany profil " + profile.Id)
             };
