@@ -79,6 +79,25 @@ public partial class MainWindow : Window
             StatusText.Text = "Zapisano ustawienia.";
     }
 
+    private void BudgetClick(object sender, RoutedEventArgs e)
+    {
+        if (ProfileBox.SelectedItem is not ProfileChoice choice)
+        {
+            StatusText.Text = "Wybierz profil.";
+            return;
+        }
+
+        var engine = _engines.FirstOrDefault(item => item.Id == choice.Profile.Engine);
+        var dialog = new BudgetWindow(choice.Profile, engine, _userSettings) { Owner = this };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        _userSettings = dialog.Result;
+        UserSettingsStore.Save(_userSettings);
+        ShowLimits(choice.Profile);
+        StatusText.Text = "Zapisano moc telewizora.";
+    }
+
     private void BindProfiles()
     {
         var selectedId = (ProfileBox.SelectedItem as ProfileChoice)?.Profile.Id;
@@ -123,10 +142,23 @@ public partial class MainWindow : Window
     {
         if (ProfileBox.SelectedItem is not ProfileChoice choice)
             return;
-        var profile = choice.Profile;
-        var memory = profile.MemoryMb?.ToString() ?? "—";
-        var cpu = profile.CpuPercent?.ToString() ?? "—";
-        LimitsText.Text = "RAM: " + memory + " MB. CPU: " + cpu + "%. Limity są zapisane w profilu i nie są egzekwowane.";
+        ShowLimits(choice.Profile);
+    }
+
+    private void ShowLimits(TvProfile profile)
+    {
+        var budget = UserSettingsStore.BudgetFor(_userSettings, profile.Id);
+        var cpu = budget?.CpuPercent;
+        var memory = budget?.MemoryMb;
+        if (cpu is null && memory is null)
+        {
+            LimitsText.Text = "Bez limitu procesora i pamięci. Moc telewizora ustawia je dla tego komputera.";
+            return;
+        }
+
+        var cpuText = cpu is null ? "bez limitu" : cpu + "% jednego wątku";
+        var memoryText = memory is null ? "bez limitu" : memory + " MB";
+        LimitsText.Text = "Procesor: " + cpuText + ". Pamięć silnika: " + memoryText + ".";
     }
 
     private void BrowseClick(object sender, RoutedEventArgs e)
@@ -238,7 +270,8 @@ public partial class MainWindow : Window
             };
             _engine.Exited += () => Dispatcher.BeginInvoke(() => EndSession("Silnik zamknął się sam."));
             _server.HoldPages();
-            _engine.Start(exe, arguments);
+            var budget = UserSettingsStore.BudgetFor(_userSettings, profile.Id);
+            _engine.Start(exe, arguments, budget?.CpuPercent, budget?.MemoryMb);
 
             EnterStage(monitor);
         }

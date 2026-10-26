@@ -7,6 +7,7 @@ namespace TvEmulator;
 public partial class SettingsWindow : Window
 {
     private readonly string _root;
+    private readonly UserSettings _source;
     private readonly List<ProfileToggle> _toggles;
 
     public UserSettings Result { get; private set; }
@@ -15,6 +16,7 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         _root = root;
+        _source = current;
         Result = current;
         AppBox.Text = current.DefaultApp;
         var hidden = new HashSet<string>(
@@ -60,7 +62,9 @@ public partial class SettingsWindow : Window
         Result = new UserSettings
         {
             DefaultApp = AppBox.Text.Trim(),
-            HiddenProfiles = _toggles.Where(item => !item.Visible).Select(item => item.Id).ToList()
+            HiddenProfiles = _toggles.Where(item => !item.Visible).Select(item => item.Id).ToList(),
+            CpuClockGhz = _source.CpuClockGhz,
+            Budgets = _source.Budgets ?? new List<ProfileBudget>()
         };
         DialogResult = true;
     }

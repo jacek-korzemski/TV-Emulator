@@ -38,7 +38,7 @@ Video does not play inside that old Chromium. Those builds lack the codecs and D
 - **Tizen is Chromium plus avplay.** `webapis.avplay` is the native Samsung player. Calls are forwarded to a WebView2 window (current Edge) behind the page. Edge has H.264, AAC, and PlayReady, so the video plane can play a clear or PlayReady DASH stream. The page punches a key color and the video shows through, the same idea as a TV video layer under the HTML.
 - **webOS is Chromium plus Edge.** webOS 4 plays in the HTML engine with Widevine, not avplay. Chromium 53 has no Widevine CDM and no H.264. The page still picks variants and downloads segments. Edge owns the Widevine session and the decoder. The video element in the old page is only a clock. PlayReady is the Tizen path and is not used here.
 
-RAM and CPU figures on a profile are labels. The program does not enforce them.
+Processor and memory caps are optional and stored on this PC. The profile files leave them empty. **Moc telewizora**, under the profile list, applies a cap to the browser process only. The video plane is not capped.
 
 ## What you need
 
@@ -92,7 +92,7 @@ Next time: open PowerShell in the same folder and run only `dotnet run`.
 - **Magic remote pointer.** When checked, the cursor is visible.
 - **Diagnostic log.** On at startup. The program writes `logs\session-….log`. After a failure, the bar at the bottom of the window shows that path.
 
-The RAM and CPU line only reports the limit stored in the profile. The program does not apply it.
+**Moc telewizora**, under the profile list, caps the selected television: a percent of one logical thread, and a memory ceiling in MB for the browser process. Empty fields turn the cap off. The numbers are saved in the same `settings.json`. The line under the list shows them. The video plane stays outside the cap.
 
 ### What to open first
 
