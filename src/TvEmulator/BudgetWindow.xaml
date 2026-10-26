@@ -1,0 +1,68 @@
+<Window x:Class="TvEmulator.BudgetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Moc telewizora"
+        Height="760"
+        Width="720"
+        MinHeight="560"
+        MinWidth="560"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="#1B1D22"
+        Foreground="#F3F1EA"
+        FontFamily="Segoe UI"
+        FontSize="14">
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Background="#121418" Padding="20,14">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Content="Zapisz" MinWidth="120" Margin="8,0,0,0"
+                Padding="18,10" FontSize="16" FontWeight="SemiBold"
+                Background="#F2C14E" Foreground="#1B1D22" BorderThickness="0" Cursor="Hand"
+                IsDefault="True" Click="SaveClick"/>
+        <Button DockPanel.Dock="Right" Content="Anuluj" MinWidth="100" Padding="14,8"
+                Background="#343842" Foreground="#F3F1EA" BorderThickness="0" Cursor="Hand"
+                IsCancel="True"/>
+        <TextBlock x:Name="BudgetStatus" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="#E7A2A2"/>
+      </DockPanel>
+    </Border>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="28">
+        <TextBlock Text="Moc telewizora" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,6"/>
+        <TextBlock x:Name="ProfileText" Foreground="#C8C4B8" TextWrapping="Wrap" Margin="0,0,0,14"/>
+        <TextBlock TextWrapping="Wrap" Foreground="#C8C4B8" LineHeight="22" Margin="0,0,0,18"
+                   Text="Limit dotyczy procesu silnika: ułamka jednego wątku logicznego i, osobno, pamięci całego procesu. Płaszczyzna wideo zostaje bez limitu. Puste pole wyłącza dany limit."/>
+
+        <TextBlock Text="Kalkulator 1:1" FontWeight="SemiBold" Margin="0,0,0,6"/>
+        <TextBlock TextWrapping="Wrap" Foreground="#9A968C" LineHeight="20" Margin="0,0,0,12"
+                   Text="Podpowiedź celuje w 1:1. GHz zakłada rdzeń desktopowy z lat 2022–2024. Na starszym laptopie o tym samym taktowaniu wpisz więcej niż podpowiedź. Liczba wątków nie zmienia procentu. Pokazuje tylko, ile z całego procesora zjada jeden wątek."/>
+
+        <TextBlock Text="Wątki logiczne" Margin="0,0,0,6"/>
+        <TextBox x:Name="ThreadsBox" Padding="8,6" Margin="0,0,0,12" MaxLength="4"
+                 CaretBrush="#F3F1EA" Background="#262A31" Foreground="#F3F1EA" BorderThickness="0"
+                 TextChanged="InputsChanged"/>
+
+        <TextBlock Text="Taktowanie jednego rdzenia (GHz)" Margin="0,0,0,6"/>
+        <TextBox x:Name="ClockBox" Padding="8,6" Margin="0,0,0,12" MaxLength="8"
+                 CaretBrush="#F3F1EA" Background="#262A31" Foreground="#F3F1EA" BorderThickness="0"
+                 TextChanged="InputsChanged"/>
+
+        <TextBlock x:Name="HintText" TextWrapping="Wrap" Foreground="#C8C4B8" LineHeight="20" Margin="0,0,0,8"/>
+        <Button x:Name="ApplyHintButton" Content="Wpisz podpowiedź" HorizontalAlignment="Left" Margin="0,0,0,18"
+                Padding="14,6" Click="ApplyHintClick" Background="#343842" Foreground="#F3F1EA" BorderThickness="0" Cursor="Hand"/>
+
+        <TextBlock Text="Procent jednego wątku" Margin="0,0,0,6"/>
+        <TextBox x:Name="CpuBox" Padding="8,6" Margin="0,0,0,6" MaxLength="3"
+                 CaretBrush="#F3F1EA" Background="#262A31" Foreground="#F3F1EA" BorderThickness="0"/>
+        <TextBlock TextWrapping="Wrap" Foreground="#9A968C" Margin="0,0,0,14"
+                   Text="Od 1 do 100. 100 to jeden pełny wątek. Więcej niż jeden wątek zostawiasz pustym polem."/>
+
+        <TextBlock Text="Pamięć silnika (MB)" Margin="0,0,0,6"/>
+        <TextBox x:Name="MemoryBox" Padding="8,6" Margin="0,0,0,6" MaxLength="7"
+                 CaretBrush="#F3F1EA" Background="#262A31" Foreground="#F3F1EA" BorderThickness="0"/>
+        <TextBlock TextWrapping="Wrap" Foreground="#9A968C" Margin="0,0,0,8"
+                   Text="Limit obejmuje cały proces silnika, nie samą stertę JavaScript. 256 MB często nie pozwala Chromium wstać. Jeśli chcesz sufit, zacznij od około 1024 MB."/>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

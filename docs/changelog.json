@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "date": "2026-10-26",
+      "title": "Optional pace and memory cap",
+      "items": [
+        "Moc telewizora, under the profile list, can slow the browser process toward the selected television and cap its memory.",
+        "The calculator asks for your core speed in GHz and suggests a percent of one logical thread that lands near the set. The thread count only translates that percent into a share of the whole processor.",
+        "Wpisz podpowiedź copies the suggestion into the field. You can type another percent, such as 20 or 60, or leave the field empty to leave the processor uncapped.",
+        "The memory field is a ceiling in MB for the whole browser process, not the JavaScript heap alone. Empty means no memory cap. The video plane stays outside both limits.",
+        "The numbers are saved on this PC, per television, in settings.json. The line under the profile list shows what the next launch will apply."
+      ]
+    },
+    {
       "date": "2026-10-25",
       "title": "PlayReady through Edge and a clean Chromium start",
       "items": [

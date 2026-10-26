@@ -5,6 +5,7 @@ namespace TvEmulator.Services;
 public sealed class EngineSession : IDisposable
 {
     private Process? _process;
+    private EngineJob? _job;
     private bool _stopRequested;
     private int _redraws;
     private int _fits;
@@ -37,7 +38,30 @@ public sealed class EngineSession : IDisposable
         }
     }
 
-    public void Start(string exe, IReadOnlyList<string> arguments)
+    public void Start(string exe, IReadOnlyList<string> arguments, int? cpuPercent = null, int? memoryMb = null)
+    {
+        var cpu = cpuPercent is >= 1 and <= 100 ? cpuPercent : null;
+        var memory = memoryMb is >= 1 and <= TvPower.MaxMemoryMb ? memoryMb : null;
+        if (cpu is null && memory is null)
+        {
+            Watch(StartFree(exe, arguments));
+            return;
+        }
+
+        var job = ProcessBudget.Create(cpu, memory);
+        try
+        {
+            Watch(ProcessBudget.Start(exe, arguments, EngineEnvironment(), job));
+            _job = job;
+        }
+        catch
+        {
+            job.Dispose();
+            throw;
+        }
+    }
+
+    private Process StartFree(string exe, IReadOnlyList<string> arguments)
     {
         var start = new ProcessStartInfo(exe)
         {
@@ -46,14 +70,24 @@ public sealed class EngineSession : IDisposable
         };
         foreach (var argument in arguments)
             start.ArgumentList.Add(argument);
+        foreach (var pair in EngineEnvironment())
+            start.Environment[pair.Key] = pair.Value;
 
-        // Unofficial Chromium snapshots show "Google API keys are missing" until these exist.
-        // Firefox and Electron ignore them.
-        start.Environment["GOOGLE_API_KEY"] = "tv-emulator";
-        start.Environment["GOOGLE_DEFAULT_CLIENT_ID"] = "tv-emulator";
-        start.Environment["GOOGLE_DEFAULT_CLIENT_SECRET"] = "tv-emulator";
+        return Process.Start(start) ?? throw new InvalidOperationException("Nie udało się uruchomić silnika.");
+    }
 
-        _process = Process.Start(start) ?? throw new InvalidOperationException("Nie udało się uruchomić silnika.");
+    // Unofficial Chromium snapshots show "Google API keys are missing" until these exist.
+    // Firefox and Electron ignore them.
+    private static Dictionary<string, string> EngineEnvironment() => new()
+    {
+        ["GOOGLE_API_KEY"] = "tv-emulator",
+        ["GOOGLE_DEFAULT_CLIENT_ID"] = "tv-emulator",
+        ["GOOGLE_DEFAULT_CLIENT_SECRET"] = "tv-emulator"
+    };
+
+    private void Watch(Process process)
+    {
+        _process = process;
         _process.EnableRaisingEvents = true;
         _process.Exited += (_, _) =>
         {
@@ -188,30 +222,40 @@ public sealed class EngineSession : IDisposable
     public void Stop()
     {
         var process = _process;
+        var job = _job;
         _process = null;
-        if (process is null)
-            return;
-
+        _job = null;
         _stopRequested = true;
         try
         {
-            if (!process.HasExited && WindowHandle != IntPtr.Zero)
+            if (process is null)
+                return;
+
+            try
             {
-                _ = NativeMethods.PostMessage(WindowHandle, NativeMethods.WmClose, IntPtr.Zero, IntPtr.Zero);
-                process.WaitForExit(3000);
+                if (!process.HasExited && WindowHandle != IntPtr.Zero)
+                {
+                    _ = NativeMethods.PostMessage(WindowHandle, NativeMethods.WmClose, IntPtr.Zero, IntPtr.Zero);
+                    process.WaitForExit(3000);
+                }
+
+                if (!process.HasExited)
+                    process.Kill(entireProcessTree: true);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
             }
 
-            if (!process.HasExited)
-                process.Kill(entireProcessTree: true);
+            process.Dispose();
         }
-        catch (InvalidOperationException)
+        finally
         {
+            // Closing the job kills anything still inside it.
+            job?.Dispose();
         }
-        catch (System.ComponentModel.Win32Exception)
-        {
-        }
-
-        process.Dispose();
     }
 
     public void Dispose() => Stop();
