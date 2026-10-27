@@ -20,7 +20,8 @@ public static class SessionPlanner
         string userDataDir,
         string startPath = "/",
         string? shellDir = null,
-        bool debug = false)
+        bool debug = false,
+        bool gpuChroma = false)
     {
         if (string.IsNullOrWhiteSpace(startPath))
             startPath = "/";
@@ -97,8 +98,30 @@ public static class SessionPlanner
         if (engine.Milestone < 76)
             args.Add("--disable-infobars");
 
+        var gpu = gpuChroma
+            && !string.Equals(engine.Kind, "electron", StringComparison.Ordinal)
+            && !string.Equals(engine.Kind, "firefox", StringComparison.Ordinal);
         if (engine.Args is not null)
-            args.AddRange(engine.Args);
+        {
+            foreach (var argument in engine.Args)
+            {
+                if (gpu && argument == "--disable-gpu")
+                    continue;
+                args.Add(argument);
+            }
+        }
+
+        if (gpu)
+        {
+            args.Add("--use-angle=d3d11");
+            args.Add(engine.Milestone < 86 ? "--ignore-gpu-blacklist" : "--ignore-gpu-blocklist");
+            args.Add("--disable-background-timer-throttling");
+            args.Add("--disable-renderer-backgrounding");
+            if (engine.Milestone >= 80)
+                args.Add("--disable-backgrounding-occluded-windows");
+            if (engine.Milestone >= 88)
+                args.Add("--disable-features=CalculateNativeWinOcclusion");
+        }
 
         if (debug)
         {

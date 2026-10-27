@@ -34,6 +34,8 @@ public static class NativeMethods
     public const int WmClose = 0x0010;
     public const int WmHotkey = 0x0312;
     public static readonly IntPtr HwndTopMost = new(-1);
+    public static readonly IntPtr HwndNoTopMost = new(-2);
+    public static readonly IntPtr HwndBottom = new(1);
     public const uint ModControl = 0x0002;
     public const uint ModShift = 0x0004;
     public const uint ModNoRepeat = 0x4000;
@@ -64,6 +66,55 @@ public static class NativeMethods
     public static void PlaceOnTop(IntPtr hwnd, int x, int y, int width, int height)
     {
         SetWindowPos(hwnd, HwndTopMost, x, y, width, height, SwpFrameChanged | SwpShowWindow);
+    }
+
+    /// <summary>Drop topmost and sit at the bottom of the z-order, resized to the stage.</summary>
+    public static void Bury(IntPtr hwnd, int x, int y, int width, int height)
+    {
+        SetWindowPos(hwnd, HwndNoTopMost, x, y, width, height, SwpFrameChanged | SwpShowWindow | SwpNoActivate);
+        SetWindowPos(hwnd, HwndBottom, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate | SwpShowWindow);
+    }
+
+    /// <summary>Keep a covered engine window from popping back over the presenter.</summary>
+    public static void Sink(IntPtr hwnd)
+    {
+        SetWindowPos(hwnd, HwndNoTopMost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate | SwpShowWindow);
+        SetWindowPos(hwnd, HwndBottom, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate | SwpShowWindow);
+    }
+
+    public static void FocusChrome(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero)
+            return;
+
+        var widget = FindRenderWidget(hwnd);
+        var target = widget != IntPtr.Zero ? widget : hwnd;
+        var foreground = GetForegroundWindow();
+        var info = new GuiThreadInfo { cbSize = Marshal.SizeOf<GuiThreadInfo>() };
+        var chromeThread = GetWindowThreadProcessId(hwnd, out _);
+        var focused = GetGUIThreadInfo(chromeThread, ref info) && info.hwndFocus == target;
+        if (focused && (foreground == hwnd || IsChild(hwnd, foreground)))
+            return;
+
+        var current = GetCurrentThreadId();
+        var foregroundThread = GetWindowThreadProcessId(foreground, out _);
+        if (foregroundThread != 0 && foregroundThread != current)
+            AttachThreadInput(current, foregroundThread, true);
+        if (chromeThread != 0 && chromeThread != current)
+            AttachThreadInput(current, chromeThread, true);
+        SetForegroundWindow(hwnd);
+        SetFocus(target);
+        if (chromeThread != 0 && chromeThread != current)
+            AttachThreadInput(current, chromeThread, false);
+        if (foregroundThread != 0 && foregroundThread != current)
+            AttachThreadInput(current, foregroundThread, false);
+    }
+
+    public static void OrderBelow(IntPtr hwnd, IntPtr above)
+    {
+        if (hwnd == IntPtr.Zero || above == IntPtr.Zero)
+            return;
+        SetWindowPos(hwnd, above, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
     }
 
     /// <summary>
@@ -163,6 +214,26 @@ public static class NativeMethods
                 return true;
             if (found is not { } best || bounds.Width * bounds.Height > best.Width * best.Height)
                 found = bounds;
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+
+    public static IntPtr FindRenderWidget(IntPtr hwnd)
+    {
+        IntPtr found = IntPtr.Zero;
+        var best = 0;
+        EnumChildWindows(hwnd, (child, _) =>
+        {
+            var className = new StringBuilder(64);
+            _ = GetClassName(child, className, className.Capacity);
+            if (className.ToString() != "Chrome_RenderWidgetHostHWND" || !GetWindowRect(child, out var rect))
+                return true;
+            var area = (rect.Right - rect.Left) * (rect.Bottom - rect.Top);
+            if (area < 50 * 50 || area <= best)
+                return true;
+            best = area;
+            found = child;
             return true;
         }, IntPtr.Zero);
         return found;
@@ -383,6 +454,51 @@ public static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetFocus(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsChild(IntPtr parent, IntPtr child);
+
+    [DllImport("user32.dll")]
+    private static extern bool AttachThreadInput(uint from, uint to, bool attach);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll")]
+    private static extern bool GetGUIThreadInfo(uint threadId, ref GuiThreadInfo info);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct GuiThreadInfo
+    {
+        public int cbSize;
+        public int flags;
+        public IntPtr hwndActive;
+        public IntPtr hwndFocus;
+        public IntPtr hwndCapture;
+        public IntPtr hwndMenuOwner;
+        public IntPtr hwndMoveSize;
+        public IntPtr hwndCaret;
+        public Rect rcCaret;
+    }
+
+    [DllImport("user32.dll")]
+    public static extern bool ClientToScreen(IntPtr hwnd, ref WinPoint point);
+
+    [DllImport("user32.dll")]
+    public static extern bool ScreenToClient(IntPtr hwnd, ref WinPoint point);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct WinPoint
+    {
+        public int X;
+        public int Y;
+    }
 
     [DllImport("user32.dll")]
     public static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);

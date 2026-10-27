@@ -36,6 +36,34 @@
   var yellowCode = keyCode("yellow", 405);
   var blueCode = keyCode("blue", 406);
 
+  // The GPU path keeps Chromium covered. A hidden page pauses this app before it
+  // fetches segments, so the Edge plane gets a license and then no media.
+  function forceVisible(object, name, value) {
+    if (!object) {
+      return;
+    }
+    try {
+      Object.defineProperty(object, name, {
+        configurable: true,
+        get: function () { return value; }
+      });
+    } catch (ignore) {}
+  }
+
+  function installVisiblePage() {
+    var proto = global.Document && global.Document.prototype;
+    forceVisible(proto, "hidden", false);
+    forceVisible(proto, "webkitHidden", false);
+    forceVisible(proto, "visibilityState", "visible");
+    forceVisible(proto, "webkitVisibilityState", "visible");
+    forceVisible(global.document, "hidden", false);
+    forceVisible(global.document, "webkitHidden", false);
+    forceVisible(global.document, "visibilityState", "visible");
+    forceVisible(global.document, "webkitVisibilityState", "visible");
+  }
+
+  installVisiblePage();
+
   function post(path, body) {
     try {
       var xhr = new XMLHttpRequest();
@@ -52,6 +80,10 @@
 
   function boot() {
     installCookieFix();
+    // pluscdn.pl rejects the emulator origin with 403 and only reflects an origin
+    // the page does not have, so live DASH never reaches the source buffer.
+    // Ask our own server for those URLs; it fetches them without an Origin.
+    installCdnProxy();
     installRpcCapture();
     applyUserAgent();
     hideDeletedGlobals();
@@ -156,6 +188,81 @@
         set: function (value) { desc.set.call(document, rewrite(String(value))); }
       });
     } catch (ignoreCookie) {}
+  }
+
+  function installCdnProxy() {
+    if (global.__TV_EMULATOR_CDN) {
+      return;
+    }
+    global.__TV_EMULATOR_CDN = true;
+
+    function plusCdn(host) {
+      var name = String(host || "").toLowerCase();
+      var colon = name.indexOf(":");
+      if (colon !== -1) {
+        name = name.substring(0, colon);
+      }
+      if (name.charAt(name.length - 1) === ".") {
+        name = name.substring(0, name.length - 1);
+      }
+      return name === "pluscdn.pl" || (name.length > 11 && name.indexOf(".pluscdn.pl") === name.length - 11);
+    }
+
+    function rewriteCdnUrl(url) {
+      var text = url == null ? "" : String(url);
+      if (!text || text.indexOf("/__emulator/cdn/") !== -1) {
+        return text;
+      }
+      var probe = text.indexOf("//") === 0 ? "https:" + text : text;
+      var match = /^(https?):\/\/([^\/?#]+)([^?#]*)(\?[^#]*)?/i.exec(probe);
+      if (!match || !plusCdn(match[2])) {
+        return text;
+      }
+      var path = match[3] || "/";
+      if (!path || path.charAt(0) !== "/") {
+        path = "/" + (path || "");
+      }
+      return "/__emulator/cdn/" + match[1].toLowerCase() + "/" + match[2].split(":")[0] + path + (match[4] || "");
+    }
+
+    var xhrProto = global.XMLHttpRequest && global.XMLHttpRequest.prototype;
+    if (xhrProto && xhrProto.open) {
+      var origOpen = xhrProto.open;
+      xhrProto.open = function (method, url) {
+        var args = [method, rewriteCdnUrl(url)];
+        var i;
+        for (i = 2; i < arguments.length; i++) {
+          args.push(arguments[i]);
+        }
+        return origOpen.apply(this, args);
+      };
+    }
+
+    if (typeof global.fetch === "function") {
+      var origFetch = global.fetch;
+      global.fetch = function (input, init) {
+        var target = input;
+        if (typeof input === "string" || (input && typeof input.url === "string")) {
+          var current = typeof input === "string" ? input : input.url;
+          var rewritten = rewriteCdnUrl(current);
+          if (rewritten !== current) {
+            if (typeof input !== "string" && global.Request) {
+              try {
+                target = new global.Request(rewritten, input);
+              } catch (ignoreRequest) {
+                target = rewritten;
+              }
+            } else {
+              target = rewritten;
+            }
+          }
+        }
+        if (arguments.length > 1) {
+          return origFetch.call(global, target, init);
+        }
+        return origFetch.call(global, target);
+      };
+    }
   }
 
   function installRpcCapture() {
@@ -2657,8 +2764,8 @@
         });
       }
       // Chrome for Testing has neither CDM. Edge does: Widevine, and software
-      // PlayReady. A Titan page (Polsat Box Go classifies that UA as Saphi)
-      // is handed only a PlayReady license URL, so both systems have to resolve.
+      // PlayReady. A Titan page is handed only a PlayReady license URL, 
+      // so both systems have to resolve.
       function isWidevineKeySystem(keySystem) {
         return keySystem === "com.widevine.alpha";
       }
