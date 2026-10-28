@@ -27,6 +27,17 @@ public partial class MainWindow : Window
     private int _attachTicks;
     private bool _enginePlaced;
     private bool _releasePagesOnFit = true;
+    private bool _gpuChroma;
+    private bool _chromaReady;
+    private bool _gpuFallbackUsed;
+    private ChromaPresenter? _presenter;
+    private DispatcherTimer? _chromaTimer;
+    private EngineBuild? _launchEngine;
+    private string? _launchExe;
+    private string? _launchUserData;
+    private bool _launchDebug;
+    private int? _launchCpu;
+    private int? _launchMemory;
     private PixelRect _stage;
     private double _settingsLeft;
     private double _settingsTop;
@@ -246,16 +257,15 @@ public partial class MainWindow : Window
                     });
             }
 
-            var arguments = SessionPlanner.Arguments(
-                engine,
-                profile,
-                _stage,
-                _server.Port,
-                userData,
-                source.LocalStartPath,
-                Path.Combine(_root, "shell", "electron"),
-                DebugBox.IsChecked == true);
             var debug = DebugBox.IsChecked == true;
+            _launchEngine = engine;
+            _launchExe = exe;
+            _launchUserData = userData;
+            _launchDebug = debug;
+            var budget = UserSettingsStore.BudgetFor(_userSettings, profile.Id);
+            _launchCpu = budget?.CpuPercent;
+            _launchMemory = budget?.MemoryMb;
+            _gpuFallbackUsed = false;
             _debugServer?.Hub.BeginSession(profile.Id, profile.Label, profile.Engine, debug, _sessionLog?.FilePath, _plane is not null);
             if (debug && _debugServer is not null && !string.Equals(engine.Kind, "firefox", StringComparison.Ordinal))
             {
@@ -263,15 +273,11 @@ public partial class MainWindow : Window
                 _cdp.EngineLost += () => Dispatcher.BeginInvoke(() =>
                     EndSession("Silnik przeglądarki padł. Sesja zamknięta, pasek zadań wrócił."));
             }
-            _engine = new EngineSession
-            {
-                HostManagedWindow = !string.Equals(engine.Kind, "electron", StringComparison.Ordinal),
-                ColorKey = _plane is null ? null : VideoPlane.KeyColor
-            };
-            _engine.Exited += () => Dispatcher.BeginInvoke(() => EndSession("Silnik zamknął się sam."));
             _server.HoldPages();
-            var budget = UserSettingsStore.BudgetFor(_userSettings, profile.Id);
-            _engine.Start(exe, arguments, budget?.CpuPercent, budget?.MemoryMb);
+            var gpu = _plane is not null
+                && !string.Equals(engine.Kind, "firefox", StringComparison.Ordinal)
+                && !string.Equals(engine.Kind, "electron", StringComparison.Ordinal);
+            StartEngine(gpu);
 
             EnterStage(monitor);
         }
@@ -340,7 +346,17 @@ public partial class MainWindow : Window
         if (_enginePlaced)
         {
             engine.Maintain(_stage);
-            _plane?.KeepBelow(engine.WindowHandle);
+            if (_presenter is not null)
+            {
+                _presenter.Source = engine.WindowHandle;
+                _presenter.Place(_stage);
+                ApplyPageCrop(engine);
+                Stack(false);
+            }
+            else if (_gpuChroma && !_gpuFallbackUsed)
+                TryStartPresenter();
+            else
+                _plane?.KeepBelow(engine.WindowHandle);
             SettleWhenFitted(engine);
             return;
         }
@@ -348,7 +364,10 @@ public partial class MainWindow : Window
         if (engine.TryAttach(_stage))
         {
             _enginePlaced = true;
-            _plane?.KeepBelow(engine.WindowHandle);
+            if (_gpuChroma)
+                TryStartPresenter();
+            else
+                _plane?.KeepBelow(engine.WindowHandle);
             if (!_cursorHidden && PointerBox.IsChecked != true)
             {
                 NativeMethods.HideCursor();
@@ -368,6 +387,8 @@ public partial class MainWindow : Window
     private void SettleWhenFitted(EngineSession engine)
     {
         if (!engine.Fitted)
+            return;
+        if (_gpuChroma && !_chromaReady)
             return;
         // Chromium opens the app from the boot gate, after its own bars are gone.
         // Firefox and Electron still release the page once the frame fits.
@@ -396,12 +417,165 @@ public partial class MainWindow : Window
         var engine = _engine;
         if (engine is null || engine.WindowHandle == IntPtr.Zero)
             return;
+        if (_presenter is not null)
+        {
+            Stack(true);
+            return;
+        }
+
         if (!engine.HostManagedWindow)
             NativeMethods.Raise(engine.WindowHandle);
         else
             NativeMethods.PlaceOnTop(engine.WindowHandle, _stage.X, _stage.Y, _stage.Width, _stage.Height);
         _plane?.KeepBelow(engine.WindowHandle);
         _ = NativeMethods.SetForegroundWindow(engine.WindowHandle);
+    }
+
+    private void StartEngine(bool gpuChroma)
+    {
+        var engine = _launchEngine ?? throw new InvalidOperationException("Brak silnika sesji.");
+        var exe = _launchExe ?? throw new InvalidOperationException("Brak pliku silnika.");
+        _gpuChroma = gpuChroma;
+        _chromaReady = false;
+        if (_server is not null)
+            _server.DeferBoot = gpuChroma;
+        var profile = (ProfileBox.SelectedItem as ProfileChoice)?.Profile
+            ?? throw new InvalidOperationException("Wybierz profil.");
+        var arguments = SessionPlanner.Arguments(
+            engine,
+            profile,
+            _stage,
+            _server?.Port ?? 0,
+            _launchUserData ?? "",
+            AppSource.Parse(DirectoryBox.Text).LocalStartPath,
+            Path.Combine(_root, "shell", "electron"),
+            _launchDebug,
+            gpuChroma);
+        _engine = new EngineSession
+        {
+            HostManagedWindow = !string.Equals(engine.Kind, "electron", StringComparison.Ordinal),
+            GpuChroma = gpuChroma,
+            ColorKey = gpuChroma || _plane is null ? null : VideoPlane.KeyColor
+        };
+        _engine.Exited += () => Dispatcher.BeginInvoke(OnEngineExited);
+        _engine.Start(exe, arguments, _launchCpu, _launchMemory);
+        if (gpuChroma)
+            _sessionLog?.Write("chroma gpu milestone=" + engine.Milestone);
+    }
+
+    private void OnEngineExited()
+    {
+        if (_gpuChroma && !_chromaReady && !_gpuFallbackUsed && _sessionState == 1)
+        {
+            FallbackToColorKey("Silnik GPU zakończył się przed pierwszą klatką.");
+            return;
+        }
+
+        EndSession("Silnik zamknął się sam.");
+    }
+
+    private void TryStartPresenter()
+    {
+        var engine = _engine;
+        if (engine is null || engine.WindowHandle == IntPtr.Zero || _presenter is not null)
+            return;
+        try
+        {
+            var presenter = new ChromaPresenter(_stage, message =>
+            {
+                _sessionLog?.Write(message);
+                _debugServer?.Hub.AddLog(message);
+            });
+            presenter.FrameReady += () => Dispatcher.BeginInvoke(OnChromaFrame);
+            presenter.Failed += reason => Dispatcher.BeginInvoke(() =>
+            {
+                if (!_chromaReady)
+                    FallbackToColorKey(reason);
+            });
+            presenter.Start(engine.WindowHandle);
+            _presenter = presenter;
+            _chromaTimer?.Stop();
+            _chromaTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            _chromaTimer.Tick += (_, _) =>
+            {
+                _chromaTimer?.Stop();
+                if (!_chromaReady)
+                    FallbackToColorKey("Prezenter GPU nie dostał klatki.");
+            };
+            _chromaTimer.Start();
+            Stack(true);
+        }
+        catch (Exception ex)
+        {
+            _presenter?.Dispose();
+            _presenter = null;
+            FallbackToColorKey(ex.Message);
+        }
+    }
+
+    private void OnChromaFrame()
+    {
+        if (_chromaReady || _sessionState != 1)
+            return;
+        _chromaReady = true;
+        _chromaTimer?.Stop();
+        if (_server is not null)
+            _server.DeferBoot = false;
+        _sessionLog?.Write("chroma presenter ready");
+        Stack(true);
+        if (_engine is { } engine)
+            SettleWhenFitted(engine);
+    }
+
+    private void FallbackToColorKey(string reason)
+    {
+        if (_gpuFallbackUsed || _sessionState != 1)
+            return;
+        _gpuFallbackUsed = true;
+        _gpuChroma = false;
+        _chromaTimer?.Stop();
+        _presenter?.Dispose();
+        _presenter = null;
+        _sessionLog?.Write("chroma fallback " + reason);
+        _debugServer?.Hub.AddLog("chroma fallback " + reason);
+        _engine?.Stop();
+        _engine = null;
+        _enginePlaced = false;
+        _attachTicks = 0;
+        try
+        {
+            _server?.HoldPages();
+            StartEngine(false);
+        }
+        catch (Exception ex)
+        {
+            EndSession(ex.Message);
+        }
+    }
+
+    private void ApplyPageCrop(EngineSession engine)
+    {
+        if (_presenter is null || !engine.TryPageCrop(out var page, out var window))
+            return;
+        _presenter.SetPageCrop(page.X, page.Y, page.Width, page.Height, window.Width, window.Height);
+    }
+
+    private void Stack(bool focus)
+    {
+        var engine = _engine;
+        var presenter = _presenter;
+        if (engine is null || presenter is null || engine.WindowHandle == IntPtr.Zero)
+            return;
+        presenter.Source = engine.WindowHandle;
+        presenter.Place(_stage);
+        ApplyPageCrop(engine);
+        var video = _plane?.WindowHandle ?? IntPtr.Zero;
+        if (video != IntPtr.Zero)
+            _plane?.KeepBelow(presenter.Handle);
+        var host = new WindowInteropHelper(this).Handle;
+        NativeMethods.OrderBelow(host, video != IntPtr.Zero ? video : presenter.Handle);
+        if (focus)
+            NativeMethods.FocusChrome(engine.WindowHandle);
     }
 
     private void EndSession(string? message)
@@ -413,7 +587,12 @@ public partial class MainWindow : Window
         {
             Taskbar.Restore();
             _attachTimer?.Stop();
+            _chromaTimer?.Stop();
             _enginePlaced = false;
+            _presenter?.Dispose();
+            _presenter = null;
+            if (_server is not null)
+                _server.DeferBoot = false;
             var hwnd = new WindowInteropHelper(this).Handle;
             if (_hotkeyRegistered && hwnd != IntPtr.Zero)
             {

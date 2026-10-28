@@ -17,6 +17,13 @@
   call("Hisense_GetModelName");
   call("Hisense_GetBrand");
   call("Hisense_GetFirmWareVersion");
+  call("Hisense_GetChipSetName");
+  call("Hisense_GetOSVersion");
+  call("Hisense_GetApiVersion");
+  call("Hisense_GetResolution");
+  call("Hisense_GetSupportForHDR");
+  call("Hisense_GetChromiumVersion");
+  call("Hisense_GetMenuLanguageCode");
   if (window.VIZIO) {
     lines.push("VIZIO present");
   }

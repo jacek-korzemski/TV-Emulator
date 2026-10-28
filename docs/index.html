@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TV Emulator</title>
-  <meta name="description" content="A Windows stand-in for smart TV browsers: Tizen, webOS, VIDAA, SmartCast, Saphi, Titan, HbbTV, Panasonic, and Sony. Era-matched engines for the page, Edge for video and DRM.">
+  <meta name="description" content="A Windows stand-in for smart TV browsers: Tizen, webOS, VIDAA, SmartCast, Saphi, Titan, HbbTV, Panasonic, Fire TV, and Sony. Era-matched engines for the page, Edge for video and DRM.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +16,7 @@
     <div class="hero-copy">
       <p class="brand">TV Emulator</p>
       <h1>Run a television browser on Windows.</h1>
-      <p class="lede">Sixteen profiles across Tizen, webOS, VIDAA, SmartCast, Saphi, Titan, HbbTV, Panasonic, and Sony — each on the engine that year shipped, with Edge carrying codecs and DRM where the old browser cannot.</p>
+      <p class="lede">Nineteen profiles across Tizen, webOS, VIDAA, SmartCast, Saphi, Titan, HbbTV, Panasonic, Fire TV, and Sony — each on the engine that year shipped, with Edge carrying codecs and DRM where the old browser cannot.</p>
       <p class="cta">
         <a class="cta-primary" href="https://github.com/jacek-korzemski/TV-Emulator">View source</a>
         <a class="cta-secondary" href="https://github.com/jacek-korzemski/TV-Emulator#get-started">Get started</a>
@@ -33,7 +33,7 @@
   <main>
     <section id="profiles">
       <h2>What it emulates</h2>
-      <p class="section-lede">Samsung and LG still lead the list. Beyond them: Hisense VIDAA, Vizio SmartCast, Philips Saphi and Titan OS, HbbTV, Panasonic my Home Screen, and Sony BRAVIA / Vewd. Each profile pins an engine close to that set’s year, then chooses how video is played.</p>
+      <p class="section-lede">Samsung and LG still lead the list. Beyond them: Hisense VIDAA, Vizio SmartCast, Philips Saphi and Titan OS, HbbTV, Panasonic my Home Screen, Panasonic Fire TV, and Sony BRAVIA / Vewd. Each profile pins an engine close to that set’s year, then chooses how video is played.</p>
       <div class="table-wrap">
         <table>
           <caption>Shipped television profiles</caption>
@@ -66,6 +66,11 @@
               <td>avplay</td>
             </tr>
             <tr>
+              <th scope="row">Samsung Tizen 9.0 (2025)</th>
+              <td>Chrome 120</td>
+              <td>avplay</td>
+            </tr>
+            <tr>
               <th scope="row">LG webOS TV 4.x (2018–2019)</th>
               <td>53</td>
               <td>edge</td>
@@ -78,6 +83,11 @@
             <tr>
               <th scope="row">Hisense VIDAA U6</th>
               <td>88</td>
+              <td>edge</td>
+            </tr>
+            <tr>
+              <th scope="row">Hisense VIDAA 9 (2025)</th>
+              <td>111</td>
               <td>edge</td>
             </tr>
             <tr>
@@ -98,7 +108,7 @@
             <tr>
               <th scope="row">Titan OS</th>
               <td>Chrome 122</td>
-              <td>page</td>
+              <td>edge</td>
             </tr>
             <tr>
               <th scope="row">HbbTV 1.5</th>
@@ -108,7 +118,12 @@
             <tr>
               <th scope="row">Panasonic my Home Screen (2016)</th>
               <td>Firefox 44</td>
-              <td>page</td>
+              <td>edge</td>
+            </tr>
+            <tr>
+              <th scope="row">Panasonic Fire TV (2025)</th>
+              <td>Chrome 122</td>
+              <td>edge</td>
             </tr>
             <tr>
               <th scope="row">Sony BRAVIA / Vewd</th>
@@ -128,10 +143,10 @@
         <div class="plane plane-video">Edge — codecs, PlayReady, Widevine</div>
       </div>
       <div class="prose">
-        <p>The host is a Windows app. It serves your folder, or loads an <code>http(s)</code> address, and injects a small platform shim. That shim provides the surfaces a TV app looks for — <code>tizen</code> / <code>webapis</code>, <code>webOS</code>, VIDAA <code>Hisense_Get*</code>, <code>VIZIO</code>, Philips <code>DeviceInfo</code>, HbbTV <code>video/broadcast</code>, <code>Panasonic</code>, or <code>Sony</code> — plus the remote key codes for that set. The window is a 16:9 stage. Where the page punches a hole in a key color, the video layer shows through, the same idea as a television’s video plane under the HTML.</p>
+        <p>The host is a Windows app. It serves your folder, or loads an <code>http(s)</code> address, and injects a small platform shim. That shim provides the surfaces a TV app looks for — <code>tizen</code> / <code>webapis</code>, <code>webOS</code>, VIDAA <code>Hisense_Get*</code>, <code>VIZIO</code>, Philips <code>DeviceInfo</code>, HbbTV <code>video/broadcast</code>, <code>Panasonic</code>, <code>Sony</code>, or a Fire TV user agent — plus the remote key codes for that set. The window is a 16:9 stage. Where the page punches a hole in a key color, the video layer shows through, the same idea as a television’s video plane under the HTML.</p>
         <p><strong>Tizen uses Chromium plus avplay.</strong> <code>webapis.avplay</code> is the native player on a Samsung TV. The pinned Chromium build has no usable H.264, AAC, or PlayReady. Calls are forwarded to a second window: WebView2, which is current Edge. Edge has the codecs and Microsoft PlayReady, so Shaka Player there can take a clear or PlayReady DASH stream. The Chromium window stays on top and owns clicks. The Edge window sits behind it and only appears through the key color.</p>
-        <p><strong>webOS uses Chromium plus Edge.</strong> webOS 4 plays through the HTML engine and Widevine, not avplay. Chromium 53 has neither a Widevine CDM nor H.264. The page still chooses variants and pulls segments. Edge owns the real Widevine session and the decoder. The video element in the old page is only a clock. PlayReady stays on the Tizen path and is not used here. VIDAA, SmartCast, Saphi, HbbTV, and the Sony profile use that same Edge path. HbbTV <code>video/broadcast</code> is a shim object, not a tuner.</p>
-        <p><strong>Titan plays in the page.</strong> Chrome for Testing 122 can hold Widevine, so that profile does not open the video plane. Panasonic my Home Screen from 2016 runs in Firefox 44. That Firefox has no Chrome DevTools Protocol, so the live preview stays empty while the session log still works. Sony is Chromium 47 with an OMI user agent, because the Vewd TV binary is not public.</p>
+        <p><strong>webOS uses Chromium plus Edge.</strong> webOS 4 plays through the HTML engine and Widevine, not avplay. Chromium 53 has neither a Widevine CDM nor H.264. The page still chooses variants and pulls segments. Edge owns the real Widevine session and the decoder. The video element in the old page is only a clock. PlayReady stays on the Tizen path and is not used here. VIDAA, SmartCast, Saphi, HbbTV, Fire TV, and the Sony profile use that same Edge path. HbbTV <code>video/broadcast</code> is a shim object, not a tuner.</p>
+        <p><strong>Titan and Panasonic Fire TV play through Edge.</strong> Chrome for Testing 122 has no Widevine CDM, so both open the video plane. A Fire TV page recognizes the set from an <code>AmazonWebAppPlatform</code> user agent, and Back is keyCode 4. Panasonic my Home Screen from 2016 runs in Firefox 44. That Firefox has no Chrome DevTools Protocol, so the live preview stays empty while the session log still works. Sony is Chromium 47 with an OMI user agent, because the Vewd TV binary is not public.</p>
         <p>RAM and CPU numbers stored on a profile are labels only. The app does not throttle the machine to match a television.</p>
       </div>
     </section>
@@ -201,5 +216,6 @@
 
   <script src="changelog.js"></script>
   <script src="stage-card.js"></script>
+  <script async defer src="https://analytics.angrymaya.pl/tracker.js" data-site="pk_265e233df75244b5a5644305"></script>
 </body>
 </html>

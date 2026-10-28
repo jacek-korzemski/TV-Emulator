@@ -120,6 +120,9 @@ public sealed class AppServer : IDisposable
     private bool _bootReleased;
     private int _pending;
 
+    /// <summary>While set, the boot gate keeps the real page until the GPU presenter has a frame.</summary>
+    public bool DeferBoot { get; set; }
+
     private static readonly TimeSpan StageWait = TimeSpan.FromSeconds(3);
 
     public int Port { get; private set; }
@@ -371,6 +374,12 @@ public sealed class AppServer : IDisposable
             return;
         }
 
+        if (path.StartsWith(CdnProxy.Prefix, StringComparison.Ordinal))
+        {
+            ProxyCdn(context);
+            return;
+        }
+
         var profile = _profile ?? throw new InvalidOperationException("Brak profilu.");
         if (_origin is not null)
         {
@@ -499,6 +508,106 @@ public sealed class AppServer : IDisposable
         ["title"] = "App",
         ["version"] = "1.0.0"
     };
+
+    private void ProxyCdn(HttpListenerContext context)
+    {
+        var profile = _profile ?? throw new InvalidOperationException("Brak profilu.");
+        if (context.Request.HttpMethod is not ("GET" or "HEAD"))
+        {
+            Write(context, 405, "text/plain; charset=utf-8", []);
+            return;
+        }
+
+        if (!CdnProxy.TryParse(context.Request.RawUrl, out var target))
+        {
+            Write(context, 400, "text/plain; charset=utf-8", Encoding.UTF8.GetBytes("Niedozwolony adres CDN."));
+            return;
+        }
+
+        var method = context.Request.HttpMethod;
+        for (var hop = 0; hop < 5; hop++)
+        {
+            using var request = new HttpRequestMessage(new HttpMethod(method), target);
+            if (!string.IsNullOrWhiteSpace(profile.UserAgent))
+                request.Headers.TryAddWithoutValidation("User-Agent", profile.UserAgent);
+            CopyRequestHeader(context, request, "Accept");
+            CopyRequestHeader(context, request, "Range");
+
+            HttpResponseMessage response;
+            try
+            {
+                response = _http.Send(request);
+            }
+            catch (HttpRequestException)
+            {
+                Write(context, 502, "text/plain; charset=utf-8", Encoding.UTF8.GetBytes("CDN niedostępny."));
+                return;
+            }
+            catch (TaskCanceledException)
+            {
+                Write(context, 504, "text/plain; charset=utf-8", Encoding.UTF8.GetBytes("CDN nie odpowiedział."));
+                return;
+            }
+
+            using (response)
+            {
+                var status = (int)response.StatusCode;
+                if (status is >= 300 and < 400)
+                {
+                    if (hop == 4
+                        || !CdnProxy.TryFollow(target, response.Headers.Location, out var next)
+                        || next.AbsoluteUri.Equals(target.AbsoluteUri, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Write(context, 502, "text/plain; charset=utf-8", Encoding.UTF8.GetBytes("CDN przekierował poza dozwolony host."));
+                        return;
+                    }
+
+                    target = next;
+                    if (status == 303)
+                        method = "GET";
+                    continue;
+                }
+
+                if (status >= 400)
+                    Log?.Invoke("cdn " + status + " " + target.Host);
+
+                WriteUpstream(context, response);
+                return;
+            }
+        }
+    }
+
+    private static void WriteUpstream(HttpListenerContext context, HttpResponseMessage response)
+    {
+        context.Response.StatusCode = (int)response.StatusCode;
+        context.Response.ContentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+        context.Response.Headers["Cache-Control"] = "no-store";
+        CopyUpstreamHeader(response, context, "Accept-Ranges");
+        CopyUpstreamHeader(response, context, "Content-Range");
+        CopyUpstreamHeader(response, context, "ETag");
+        if (response.Content.Headers.ContentLength is long length)
+            context.Response.ContentLength64 = length;
+
+        var status = (int)response.StatusCode;
+        if (status != 204 && status != 304)
+        {
+            using var stream = response.Content.ReadAsStream();
+            stream.CopyTo(context.Response.OutputStream);
+        }
+
+        context.Response.OutputStream.Close();
+        context.Response.Close();
+    }
+
+    private static void CopyUpstreamHeader(HttpResponseMessage response, HttpListenerContext context, string name)
+    {
+        if (!response.Headers.TryGetValues(name, out var values) && !response.Content.Headers.TryGetValues(name, out values))
+            return;
+
+        var value = string.Join(", ", values);
+        if (value.Length > 0)
+            context.Response.Headers[name] = value;
+    }
 
     private void Proxy(HttpListenerContext context, TvProfile profile)
     {
@@ -730,6 +839,17 @@ public sealed class AppServer : IDisposable
             var now = Environment.TickCount64;
             if (_bootSeenAt == 0)
                 _bootSeenAt = now;
+
+            if (DeferBoot && !_bootReleased)
+            {
+                if (now - _bootSeenAt >= BootGiveUpMs)
+                {
+                    _bootReleased = true;
+                    return new BootDecision(_startPath, true, true, expected);
+                }
+
+                return new BootDecision("", false, false, expected);
+            }
 
             if (_bootReleased)
                 return new BootDecision(_startPath, false, false, expected);

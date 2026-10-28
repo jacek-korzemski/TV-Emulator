@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "date": "2026-10-27",
+      "title": "Chromium picture on the GPU",
+      "items": [
+        "Chromium profiles that play through the Edge picture now draw the page on the GPU. The browser window stays covered, and the key color is punched out of a capture sitting above the video.",
+        "The video window itself is unchanged, so PlayReady and Widevine stay where they were.",
+        "The page still reports itself as visible, so a covered window does not pause the app or stop it fetching segments.",
+        "The app waits for the first GPU frame before it loads the page. If that frame never comes, or the browser exits first, the session restarts on the older color-key path.",
+        "Clicks, the wheel, and keys on the picture go to the covered browser.",
+        "Requests to pluscdn.pl go through the emulator. That host rejects the page origin, so the local server fetches manifests and segments without one."
+      ]
+    },
+    {
+      "date": "2026-10-26",
+      "title": "Tizen 9, VIDAA 9, and Panasonic Fire TV",
+      "items": [
+        "Samsung Tizen 9.0 (2025) is in the profile list. The page runs on Chrome 120 and the picture still goes through avplay.",
+        "Hisense VIDAA 9 (2025) runs on Chromium 111, with the picture on the Edge plane. VIDAA profiles also answer chipset, OS version, resolution, HDR, Chromium version, and menu language.",
+        "Panasonic 2025 is Fire TV, not my Home Screen. The page runs in Chrome 122, the picture goes through Edge, and Back is keyCode 4. A page recognizes the set from the AmazonWebAppPlatform user agent."
+      ]
+    },
+    {
       "date": "2026-10-26",
       "title": "Optional pace and memory cap",
       "items": [
@@ -15,7 +36,7 @@
       "date": "2026-10-25",
       "title": "PlayReady through Edge and a clean Chromium start",
       "items": [
-        "Profiles that play through the Edge picture now take PlayReady as well as Widevine. A page that only offers a PlayReady license, such as Polsat Box Go on Titan, can start that stream.",
+        "Profiles that play through the Edge picture now take PlayReady as well as Widevine. A page that only offers a PlayReady license, can start that stream.",
         "Edge uses its software PlayReady decoder so the picture stays in the video hole. Hardware PlayReady would draw into a protected overlay the color key cannot show.",
         "The page reports PlayReady variants as supported, so they stay in the catalog the same way Widevine variants already do.",
         "Closing one stream and opening the next no longer stalls on a license or append error left over from the stream that just ended.",

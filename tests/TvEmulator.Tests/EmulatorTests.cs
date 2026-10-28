@@ -150,9 +150,12 @@ public class EmulatorTests
         Assert.Contains(profiles, profile => profile.Id == "tizen-2018" && profile.Engine == "chromium-56" && profile.Player == "avplay");
         Assert.Contains(profiles, profile => profile.Id == "tizen-2019" && profile.Engine == "chromium-63" && profile.Player == "avplay");
         Assert.Contains(profiles, profile => profile.Id == "tizen-2022" && profile.Engine == "chromium-85" && profile.PlatformVersion == "6.5" && profile.Player == "avplay");
+        Assert.Contains(profiles, profile => profile.Id == "tizen-2025" && profile.Engine == "chrome-120" && profile.PlatformVersion == "9.0" && profile.Player == "avplay");
         Assert.Contains(profiles, profile => profile.Id == "vidaa-u6" && profile.Engine == "chromium-88" && profile.Player == "edge");
+        Assert.Contains(profiles, profile => profile.Id == "vidaa-9" && profile.Engine == "chromium-111" && profile.PlatformVersion == "9.0" && profile.Player == "edge");
         Assert.Contains(profiles, profile => profile.Id == "titan-122" && profile.Engine == "chrome-122" && profile.Player == "edge");
         Assert.Contains(profiles, profile => profile.Id == "panasonic-2016" && profile.Engine == "firefox-44" && profile.Player == "edge");
+        Assert.Contains(profiles, profile => profile.Id == "panasonic-2025" && profile.Engine == "chrome-122" && profile.Platform == "firetv" && profile.Player == "edge" && profile.Keys.Back == 4);
         Assert.All(profiles, profile =>
         {
             Assert.Null(profile.MemoryMb);
@@ -165,7 +168,7 @@ public class EmulatorTests
         Assert.All(profiles.Where(profile => profile.Id != "tizen-2018"), profile => Assert.Empty(profile.Quirks.DeleteGlobals));
 
         var engines = Catalog.LoadEngines(root);
-        Assert.Equal(11, engines.Count);
+        Assert.Equal(13, engines.Count);
         Assert.Equal("chromium", Assert.Single(engines, item => item.Id == "chromium-47").Kind);
         Assert.Equal("firefox", Assert.Single(engines, item => item.Id == "firefox-44").Kind);
         Assert.DoesNotContain(engines, item => item.Kind == "electron");
@@ -181,11 +184,13 @@ public class EmulatorTests
                 "tizen-2018" or "smartcast-56" => 56,
                 "tizen-2019" or "smartcast-63" => 63,
                 "tizen-2022" => 85,
+                "tizen-2025" => 120,
                 "saphi-49" => 49,
                 "vidaa-u2" => 74,
                 "saphi-84" => 84,
                 "vidaa-u6" => 88,
-                "titan-122" => 122,
+                "vidaa-9" => 111,
+                "titan-122" or "panasonic-2025" => 122,
                 "panasonic-2016" => 44,
                 _ => throw new InvalidOperationException("Nieznany profil " + profile.Id)
             };
@@ -238,6 +243,52 @@ public class EmulatorTests
         Assert.Contains("--test-type", chromium85);
         Assert.DoesNotContain("--disable-infobars", chromium85);
         Assert.Equal("--app=http://127.0.0.1:47911/__emulator/boot.html", chromium85[^1]);
+        var gpu63 = SessionPlanner.Arguments(
+            new EngineBuild { Milestone = 63, Args = ["--no-sandbox", "--disable-gpu", "--no-proxy-server"] },
+            profile,
+            new PixelRect(10, 20, 1600, 900),
+            47911,
+            @"C:\data dir",
+            gpuChroma: true);
+        Assert.Contains("--no-sandbox", gpu63);
+        Assert.DoesNotContain("--disable-gpu", gpu63);
+        Assert.Contains("--use-angle=d3d11", gpu63);
+        Assert.Contains("--ignore-gpu-blacklist", gpu63);
+        Assert.Contains("--disable-background-timer-throttling", gpu63);
+        Assert.Contains("--disable-renderer-backgrounding", gpu63);
+        Assert.DoesNotContain("--ignore-gpu-blocklist", gpu63);
+        Assert.DoesNotContain("--disable-backgrounding-occluded-windows", gpu63);
+        Assert.DoesNotContain(gpu63, argument => argument.StartsWith("--disable-features=", StringComparison.Ordinal));
+        Assert.Equal("--app=http://127.0.0.1:47911/__emulator/boot.html", gpu63[^1]);
+        var gpu85 = SessionPlanner.Arguments(
+            new EngineBuild { Milestone = 85, Args = ["--disable-gpu"] },
+            profile,
+            new PixelRect(10, 20, 1600, 900),
+            47911,
+            @"C:\data dir",
+            gpuChroma: true);
+        Assert.Contains("--disable-backgrounding-occluded-windows", gpu85);
+        Assert.Contains("--ignore-gpu-blacklist", gpu85);
+        Assert.DoesNotContain(gpu85, argument => argument.Contains("CalculateNativeWinOcclusion", StringComparison.Ordinal));
+        var gpu88 = SessionPlanner.Arguments(
+            new EngineBuild { Milestone = 88, Args = ["--disable-gpu"] },
+            profile,
+            new PixelRect(10, 20, 1600, 900),
+            47911,
+            @"C:\data dir",
+            gpuChroma: true);
+        Assert.Contains("--ignore-gpu-blocklist", gpu88);
+        Assert.Contains("--disable-features=CalculateNativeWinOcclusion", gpu88);
+        Assert.DoesNotContain("--disable-gpu", gpu88);
+        var crop = ChromaPresenter.MapPage(8, 75, 1920, 1080, 1936, 1163, 1936, 1163);
+        Assert.Equal(8f, crop.X);
+        Assert.Equal(75f, crop.Y);
+        Assert.Equal(1920f, crop.Width);
+        Assert.Equal(1080f, crop.Height);
+        var full = ChromaPresenter.MapPage(0, 0, 0, 0, 1920, 1080, 1920, 1080);
+        Assert.Equal(0f, full.X);
+        Assert.Equal(1920f, full.Width);
+        Assert.Equal(1080f, full.Height);
         var chromium122 = SessionPlanner.Arguments(
             new EngineBuild { Milestone = 122 },
             profile,
@@ -502,6 +553,47 @@ public class EmulatorTests
         }
 
         upstream.Stop();
+    }
+
+    [Fact]
+    public void CdnProxyKeepsPluscdnAndDropsEverythingElse()
+    {
+        Assert.True(CdnProxy.TryParse(
+            "/__emulator/cdn/https/lb2-e3-16.pluscdn.pl/ch/1553459/dash/live.mpd?variant=1",
+            out var manifest));
+        Assert.Equal("https://lb2-e3-16.pluscdn.pl/ch/1553459/dash/live.mpd?variant=1", manifest.AbsoluteUri);
+
+        Assert.True(CdnProxy.TryParse("/__emulator/cdn/http/cdn-s-lb2.pluscdn.pl/ch/1/init.mp4", out var init));
+        Assert.Equal("http://cdn-s-lb2.pluscdn.pl/ch/1/init.mp4", init.AbsoluteUri);
+
+        Assert.False(CdnProxy.TryParse("/__emulator/cdn/https/evil.example/live.mpd", out _));
+        Assert.False(CdnProxy.TryParse("/__emulator/cdn/https/pluscdn.pl.evil.com/live.mpd", out _));
+        Assert.False(CdnProxy.TryParse("/__emulator/cdn/file/lb2.pluscdn.pl/live.mpd", out _));
+        Assert.False(CdnProxy.TryParse("/__emulator/cdn/https/user@lb2.pluscdn.pl/live.mpd", out _));
+
+        var current = new Uri("http://cdn-s-lb2.pluscdn.pl/ch/1/live.mpd");
+        Assert.True(CdnProxy.TryFollow(current, new Uri("http://lb2-e3-16.pluscdn.pl/ch/1/live.mpd"), out var edge));
+        Assert.Equal("lb2-e3-16.pluscdn.pl", edge.Host);
+        Assert.True(CdnProxy.TryFollow(current, new Uri("/ch/1/other.mpd", UriKind.Relative), out var relative));
+        Assert.Equal("http://cdn-s-lb2.pluscdn.pl/ch/1/other.mpd", relative.AbsoluteUri);
+        Assert.False(CdnProxy.TryFollow(current, new Uri("https://evil.example/stolen"), out _));
+    }
+
+    [Fact]
+    public async Task CdnProxyRejectsAForeignHostBeforeCallingIt()
+    {
+        var root = RepoPaths.Root();
+        var profile = Catalog.LoadProfiles(root).Single(item => item.Id == "webos-4");
+        using var server = new AppServer();
+        server.Start(root, Path.Combine(root, "samples", "tizen-hello"), profile, pointerEnabled: false);
+        using var client = new HttpClient();
+
+        var script = await client.GetStringAsync("http://127.0.0.1:" + server.Port + "/__emulator/platform.js");
+        Assert.Contains("/__emulator/cdn/", script);
+        Assert.Contains("pluscdn.pl", script);
+
+        var denied = await client.GetAsync("http://127.0.0.1:" + server.Port + "/__emulator/cdn/https/evil.example/live.mpd");
+        Assert.Equal(HttpStatusCode.BadRequest, denied.StatusCode);
     }
 
     [Fact]
