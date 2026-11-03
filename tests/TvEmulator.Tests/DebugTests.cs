@@ -260,6 +260,71 @@ public class DebugTests
         Assert.Contains("CDP nie jest podłączone.", error);
     }
 
+    [Fact]
+    public void GcTrackingStaysOffUntilAskedAndNeedsCdp()
+    {
+        var hub = new DebugHub();
+        var requests = new List<(string Source, bool On)>();
+        var errors = new List<string>();
+        hub.GcTrackingRequested += (source, on) => requests.Add((source, on));
+        hub.Subscribe(json => { if (json.Contains("heap-error")) errors.Add(json); }, out _);
+        hub.BeginSession("tizen-2018", "Tizen", "chromium-56", diagnostics: true, logFile: null, video: false);
+        Assert.False(hub.GcTracking("engine"));
+
+        hub.HandleClient("""{"action":"gc","target":"engine","on":true}""");
+        Assert.False(hub.GcTracking("engine"));
+        Assert.Empty(requests);
+        Assert.Contains(errors, error => error.Contains("CDP nie jest podłączone."));
+
+        hub.SetCdp("engine", "open");
+        hub.HandleClient("""{"action":"gc","target":"engine","on":true}""");
+        Assert.True(hub.GcTracking("engine"));
+        Assert.Equal([("engine", true)], requests);
+
+        hub.HandleClient("""{"action":"gc","target":"engine","on":false}""");
+        Assert.False(hub.GcTracking("engine"));
+        Assert.Equal(("engine", false), requests[^1]);
+
+        hub.HandleClient("""{"action":"gc","target":"engine","on":true}""");
+        hub.BeginSession("tizen-2018", "Tizen", "chromium-56", diagnostics: true, logFile: null, video: false);
+        Assert.False(hub.GcTracking("engine"));
+    }
+
+    [Fact]
+    public void GcIntervalIsSharedAndDoesNotEnableTracking()
+    {
+        var hub = new DebugHub();
+        hub.GcTrackingRequested += (_, _) => { };
+        hub.Subscribe(_ => { }, out _);
+        hub.BeginSession("tizen-2019", "Tizen", "chromium-63", diagnostics: true, logFile: null, video: true);
+        hub.SetCdp("engine", "open");
+        hub.SetCdp("video", "open");
+
+        hub.HandleClient("""{"action":"gc","intervalMs":10}""");
+        Assert.False(hub.GcTracking("engine"));
+        Assert.False(hub.GcTracking("video"));
+        Assert.Equal(50, hub.GcIntervalMs());
+
+        hub.HandleClient("""{"action":"gc","intervalMs":900}""");
+        Assert.Equal(500, hub.GcIntervalMs());
+        Assert.False(hub.GcTracking("engine"));
+
+        hub.HandleClient("""{"action":"gc","target":"engine","on":true,"intervalMs":200}""");
+        Assert.True(hub.GcTracking("engine"));
+        Assert.False(hub.GcTracking("video"));
+        Assert.Equal(200, hub.GcIntervalMs());
+
+        hub.HandleClient("""{"action":"gc","target":"video","on":true}""");
+        Assert.True(hub.GcTracking("engine"));
+        Assert.True(hub.GcTracking("video"));
+        Assert.Equal(200, hub.GcIntervalMs());
+
+        hub.BeginSession("tizen-2019", "Tizen", "chromium-63", diagnostics: true, logFile: null, video: true);
+        Assert.False(hub.GcTracking("engine"));
+        Assert.False(hub.GcTracking("video"));
+        Assert.Equal(200, hub.GcIntervalMs());
+    }
+
     private static string Snapshot(params (string Name, int Count, long Size)[] groups)
     {
         var strings = new List<string> { "" };

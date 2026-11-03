@@ -44,6 +44,7 @@ public sealed class DebugHub
     private long _networkIds;
 
     public event Action<string>? SnapshotRequested;
+    public event Action<string, bool>? GcTrackingRequested;
 
     public long NextNetworkId() => Interlocked.Increment(ref _networkIds);
 
@@ -83,6 +84,7 @@ public sealed class DebugHub
                 Engine = diagnostics ? "connecting" : "off",
                 Video = diagnostics && video ? "connecting" : "off"
             };
+            _status.Gc = new GcFlags { IntervalMs = GcFlags.Normalize(_status.Gc.IntervalMs) };
             json = Serialize(new { type = "reset", status = _status });
             listeners = _listeners.ToArray();
         }
@@ -100,6 +102,7 @@ public sealed class DebugHub
             _status.Diagnostics = false;
             _status.Cdp.Engine = "off";
             _status.Cdp.Video = "off";
+            _status.Gc = new GcFlags { IntervalMs = GcFlags.Normalize(_status.Gc.IntervalMs) };
             json = Serialize(new { type = "status", status = _status });
             listeners = _listeners.ToArray();
         }
@@ -366,6 +369,61 @@ public sealed class DebugHub
         handler(source);
     }
 
+    public void RequestGcTracking(string source, bool on, int? intervalMs = null)
+    {
+        if (source is not ("engine" or "video"))
+            return;
+        Action<string, bool>? handler;
+        string json;
+        Action<string>[] listeners;
+        lock (_gate)
+        {
+            if (intervalMs is int ms)
+                _status.Gc.IntervalMs = GcFlags.Normalize(ms);
+            handler = GcTrackingRequested;
+            var open = source == "engine" ? _status.Cdp.Engine == "open" : _status.Cdp.Video == "open";
+            if (on && (!open || handler is null))
+                handler = null;
+            if (source == "engine")
+                _status.Gc.Engine = on && handler is not null;
+            else
+                _status.Gc.Video = on && handler is not null;
+            json = Serialize(new { type = "status", status = _status });
+            listeners = _listeners.ToArray();
+        }
+
+        Dispatch(listeners, json);
+        if (on && handler is null)
+            HeapError(source, "CDP nie jest podłączone.");
+        handler?.Invoke(source, on);
+    }
+
+    public void SetGcInterval(int intervalMs)
+    {
+        string json;
+        Action<string>[] listeners;
+        lock (_gate)
+        {
+            _status.Gc.IntervalMs = GcFlags.Normalize(intervalMs);
+            json = Serialize(new { type = "status", status = _status });
+            listeners = _listeners.ToArray();
+        }
+
+        Dispatch(listeners, json);
+    }
+
+    public bool GcTracking(string source)
+    {
+        lock (_gate)
+            return source == "engine" ? _status.Gc.Engine : source == "video" && _status.Gc.Video;
+    }
+
+    public int GcIntervalMs()
+    {
+        lock (_gate)
+            return GcFlags.Normalize(_status.Gc.IntervalMs);
+    }
+
     public void HandleClient(string json)
     {
         try
@@ -374,12 +432,31 @@ public sealed class DebugHub
             var action = node?["action"]?.ToString();
             if (action == "snapshot")
                 RequestSnapshot(node?["target"]?.ToString() ?? "");
+            else if (action == "gc")
+                ApplyGc(node);
             else if (action == "clear")
                 Clear(node?["channel"]?.ToString() ?? "");
         }
         catch (JsonException)
         {
         }
+    }
+
+    private void ApplyGc(JsonNode? node)
+    {
+        int? interval = null;
+        if (node?["intervalMs"] is JsonValue intervalValue && intervalValue.TryGetValue<int>(out var parsed))
+            interval = parsed;
+        var target = node?["target"]?.ToString() ?? "";
+        if (target.Length == 0)
+        {
+            if (interval is int ms)
+                SetGcInterval(ms);
+            return;
+        }
+
+        var on = node?["on"] is JsonValue onValue && onValue.TryGetValue<bool>(out var flag) && flag;
+        RequestGcTracking(target, on, interval);
     }
 
     public string StatusJson()

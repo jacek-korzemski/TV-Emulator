@@ -9,6 +9,7 @@ public sealed class DebugStatus
     public string Engine { get; set; } = "";
     public string LogFile { get; set; } = "";
     public CdpFlags Cdp { get; set; } = new();
+    public GcFlags Gc { get; set; } = new();
     public List<string> Urls { get; set; } = new();
     public int Port { get; set; }
 }
@@ -17,6 +18,32 @@ public sealed class CdpFlags
 {
     public string Engine { get; set; } = "off";
     public string Video { get; set; } = "off";
+}
+
+/// <summary>
+/// Heap samples for the Chromium page and the video plane. Both stay off until asked.
+/// The sample is performance.memory at <see cref="IntervalMs"/>, not a full heap walk.
+/// </summary>
+public sealed class GcFlags
+{
+    public const int MinIntervalMs = 50;
+    public const int MaxIntervalMs = 500;
+    public const int DefaultIntervalMs = 500;
+
+    public bool Engine { get; set; }
+    public bool Video { get; set; }
+    public int IntervalMs { get; set; } = DefaultIntervalMs;
+
+    public static int Normalize(int ms)
+    {
+        if (ms <= 0)
+            return DefaultIntervalMs;
+        if (ms < MinIntervalMs)
+            return MinIntervalMs;
+        if (ms > MaxIntervalMs)
+            return MaxIntervalMs;
+        return ms;
+    }
 }
 
 public sealed class ConsoleLine

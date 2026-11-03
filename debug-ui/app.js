@@ -190,6 +190,9 @@
     }
 
     updateStatus();
+    if (state.tab === "memory" && (message.type === "hello" || message.type === "reset" || message.type === "status")) {
+      if (!document.activeElement || document.activeElement.id !== "gc-interval") renderToolbar();
+    }
     if (message.type === "hello" || message.type === "reset" || affectsTab(message)) renderList();
   }
 
@@ -288,11 +291,27 @@
     } else if (state.tab === "memory") {
       html += '<button type="button" data-action="snapshot" data-target="engine">Zrzut sterty strony</button>';
       html += '<button type="button" data-action="snapshot" data-target="video">Zrzut sterty wideo</button>';
+      html += gcButton("engine", "GC Chromium");
+      html += gcButton("video", "GC wideo");
+      html += '<label class="gc-interval">Odświeżanie <input id="gc-interval" type="range" min="50" max="500" step="50" value="' + gcInterval() + '" aria-label="Odświeżanie GC"> <span>' + gcInterval() + " ms</span></label>";
       html += '<button type="button" data-action="help" aria-label="Jak czytać pamięć">ⓘ</button>';
     } else {
       html += '<button type="button" data-action="clear" data-channel="log">Wyczyść</button>';
     }
     document.getElementById("toolbar").innerHTML = html;
+  }
+
+  function gcInterval() {
+    var gc = (state.status && state.status.gc) || {};
+    var ms = Number(gc.intervalMs);
+    if (!ms || ms < 50) return 500;
+    if (ms > 500) return 500;
+    return ms;
+  }
+
+  function gcButton(target, label) {
+    var gc = (state.status && state.status.gc) || {};
+    return '<button type="button" data-action="gc" data-target="' + target + '" aria-pressed="' + (gc[target] ? "true" : "false") + '">' + label + "</button>";
   }
 
   function levelButton(level, label) {
@@ -317,16 +336,27 @@
     } else if (action === "snapshot") {
       var target = button.getAttribute("data-target");
       if (target === "engine" && usesOldGc(state.status && state.status.engine)) {
-        var proceed = window.confirm("Pełny zrzut na Chromium starszym niż 62 potrafi zabić przeglądarkę. Śledzenie GC na żywo już działa bez zrzutu. Zrobić pełny zrzut mimo to?");
+        var proceed = window.confirm("Pełny zrzut na Chromium starszym niż 62 potrafi zabić przeglądarkę. Śledzenie GC pokazuje zbiórki bez zrzutu. Zrobić pełny zrzut mimo to?");
         if (!proceed) return;
       }
       send({ action: "snapshot", target: target });
+    } else if (action === "gc") {
+      var gcTarget = button.getAttribute("data-target");
+      var gcOn = button.getAttribute("aria-pressed") !== "true";
+      send({ action: "gc", target: gcTarget, on: gcOn, intervalMs: gcInterval() });
     } else if (action === "help") {
       openHelp();
     }
   }
 
   function onToolbarInput(event) {
+    if (event.target.id === "gc-interval") {
+      var ms = Number(event.target.value);
+      var label = event.target.parentNode && event.target.parentNode.querySelector("span");
+      if (label) label.textContent = ms + " ms";
+      send({ action: "gc", intervalMs: ms });
+      return;
+    }
     if (event.target.id !== "net-query") return;
     state.netQuery = event.target.value;
     renderList();
@@ -541,9 +571,9 @@
   }
 
   function renderMemory() {
-    var html = '<p class="note">Liczby to rozmiar własny obiektów, nie drzewo dominatorów z DevTools. Różnica dwóch zrzutów pokazuje, co zniknęło, a co zostało. Linia śledzonych obiektów pokazuje zbiórki na żywo: stary GC spada rzadko i stromo, nowszy częściej i łagodniej.</p>';
+    var html = '<p class="note">Wykres to rozmiar sterty JS w wybranym odstępie, nie przejście wszystkich obiektów. 50 ms jest najgęstsze i najcięższe. 500 ms wystarcza, żeby zobaczyć, czy sterta rośnie. Przy wyłączonym GC strona nie jest pytana o pamięć. Pełny zrzut nadal robi się ręcznie.</p>';
     if (usesOldGc(state.status && state.status.engine))
-      html += '<p class="note">Ten silnik jest starszy niż Chromium 62. Śledzenie GC działa bez pełnego zrzutu. Pełny zrzut potrafi zabić przeglądarkę — sesja wtedy sama się zamyka i pasek zadań wraca.</p>';
+      html += '<p class="note">Ten silnik jest starszy niż Chromium 62. Pełny zrzut potrafi zabić przeglądarkę — sesja wtedy sama się zamyka i pasek zadań wraca.</p>';
     html += '<div class="memory-grid">';
     html += memoryCard("engine", "Strona");
     html += memoryCard("video", "Wideo");
@@ -553,6 +583,11 @@
     return html;
   }
 
+  function gcOn(source) {
+    var gc = (state.status && state.status.gc) || {};
+    return !!gc[source];
+  }
+
   function memoryCard(source, label) {
     var samples = state.memory[source] || [];
     var tracked = state.gc[source] || [];
@@ -560,7 +595,7 @@
     var lastGc = tracked.length ? tracked[tracked.length - 1] : null;
     var html = '<section class="card"><h2>' + label + "</h2>";
     if (!last && !lastGc) {
-      html += '<p class="muted">Brak odczytu sterty.</p></section>';
+      html += '<p class="muted">' + (gcOn(source) ? "Czekam na pierwszy odczyt." : "GC wyłączone.") + "</p></section>";
       return html;
     }
     if (last) {
@@ -577,8 +612,8 @@
       html += '<div class="figure">' + esc(formatBytes(lastGc.size)) + "</div>";
       html += '<p class="muted">' + esc(lastGc.count) + " sztuk · " + esc(lastGc.time) + "</p>";
       html += '<canvas data-gc="' + source + '"></canvas>';
-    } else {
-      html += '<p class="muted">Brak śledzenia GC.</p>';
+    } else if (!gcOn(source)) {
+      html += '<p class="muted">GC wyłączone.</p>';
     }
     html += "</section>";
     return html;
