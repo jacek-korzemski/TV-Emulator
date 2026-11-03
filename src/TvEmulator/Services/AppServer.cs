@@ -642,6 +642,17 @@ public sealed class AppServer : IDisposable
         }
 
         var mediaType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        var requestedPath = context.Request.Url?.AbsolutePath ?? "/";
+        if (context.Request.HttpMethod == "GET"
+            && AppFiles.IsPlatformScript(requestedPath)
+            && (!response.IsSuccessStatusCode || !IsJavaScript(mediaType)))
+        {
+            var shimBytes = Encoding.UTF8.GetBytes(_shim);
+            Note(context.Request.HttpMethod + " " + pathAndQuery + " 200 text/javascript " + shimBytes.Length + " fallback");
+            Write(context, 200, "text/javascript; charset=utf-8", shimBytes);
+            return;
+        }
+
         var localBase = "http://127.0.0.1:" + Port;
         if (IsRewritable(mediaType))
         {
@@ -681,6 +692,10 @@ public sealed class AppServer : IDisposable
         || mediaType.Contains("javascript", StringComparison.OrdinalIgnoreCase)
         || mediaType.Contains("ecmascript", StringComparison.OrdinalIgnoreCase)
         || mediaType.Contains("json", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsJavaScript(string mediaType) =>
+        mediaType.Contains("javascript", StringComparison.OrdinalIgnoreCase)
+        || mediaType.Contains("ecmascript", StringComparison.OrdinalIgnoreCase);
 
     private void CopyCookies(HttpResponseMessage response, HttpListenerContext context)
     {

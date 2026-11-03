@@ -704,8 +704,9 @@ public class EmulatorTests
                 }
                 else if (path == "/webOSTV.js")
                 {
-                    var bytes = Encoding.UTF8.GetBytes("window.webOS = upstream");
-                    ctx.Response.ContentType = "text/javascript";
+                    var devFallback = ctx.Request.Url?.Query == "?dev";
+                    var bytes = Encoding.UTF8.GetBytes(devFallback ? "<!doctype html><title>Dev server</title>" : "window.webOS = upstream");
+                    ctx.Response.ContentType = devFallback ? "text/html" : "text/javascript";
                     ctx.Response.ContentLength64 = bytes.Length;
                     ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
                 }
@@ -740,6 +741,9 @@ public class EmulatorTests
         var library = await client.GetStringAsync("http://127.0.0.1:" + server.Port + "/webOSTV.js");
         Assert.Equal("window.webOS = upstream", library);
         Assert.DoesNotContain("TV_EMULATOR_BOOTED", library);
+
+        var fallback = await client.GetStringAsync("http://127.0.0.1:" + server.Port + "/webOSTV.js?dev");
+        Assert.Contains("TV_EMULATOR_BOOTED", fallback);
 
         upstream.Stop();
     }
