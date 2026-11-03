@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "date": "2026-11-04",
+      "title": "Heap chart only when you ask",
+      "items": [
+        "The debug preview no longer measures the JavaScript heap on its own. Console, network, and the session log still update while the page is running.",
+        "On the memory tab, GC Chromium and GC wideo turn the chart on for the page and for the video plane. A new session leaves both off.",
+        "Odświeżanie sets how often the chart updates, from 50 ms to 500 ms. The short end is denser and heavier. The long end is enough to see whether the heap is growing.",
+        "The chart is the size of the JavaScript heap. It does not walk every object. A full snapshot is still a separate button.",
+        "With the chart off, the page is not asked about memory, so the picture stays smoother."
+      ]
+    },
+    {
       "date": "2026-11-03",
       "title": "Subtitles and audio tracks",
       "items": [
