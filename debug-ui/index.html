@@ -45,8 +45,8 @@
         <button type="button" data-action="close-help" aria-label="Zamknij">×</button>
       </div>
       <div class="help-body">
-        <p>Górna liczba i pierwsza linia to <strong>performance.memory</strong>: ile sterty JS jest zajęte. To nie jest lista obiektów.</p>
-        <p>Druga linia, „śledzone obiekty”, idzie małymi porcjami i nie zatrzymuje strony. Spadek to zbiórka śmieci. Stary GC spada rzadko i stromo. Nowszy spada częściej i mniejszymi krokami.</p>
+        <p>Górna liczba i pierwsza linia to <strong>performance.memory</strong>: ile sterty JS jest zajęte. Pojawia się po włączeniu GC Chromium albo GC wideo i odświeża się w wybranym odstępie, od 50 do 500 ms. To nie jest lista obiektów i nie przechodzi całej sterty.</p>
+        <p>50 ms rysuje gęściej i trochę bardziej obciąża stronę. 500 ms wystarcza, żeby zobaczyć, czy sterta rośnie. Nowa sesja wyłącza oba GC. Suwak zostaje.</p>
         <p>Pełny zrzut na chwilę zatrzymuje stronę w telewizorze. Pierwszy zrzut mówi, co siedzi w pamięci. Drugi pokazuje różnicę wobec poprzedniego.</p>
         <p><strong>Zostało</strong> to największy rozmiar własny. <strong>Urosło</strong> to przybyło od poprzedniego zrzutu. <strong>Zniknęło</strong> to ubyło sztuk albo bajtów, czyli to, co w międzyczasie prawdopodobnie zebrał GC. Nagłówki kolumn sortują tabelę.</p>
         <p>Wyciek widać jako konstruktor, który rośnie między zrzutami i nie spada po zejściu z ekranu: Array, Object, string, ArrayBuffer albo węzły DOM. Zrób zrzut na ekranie, wyjdź z niego i zrób drugi.</p>

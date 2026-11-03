@@ -1,0 +1,33 @@
+{
+  "id": "panasonic-2025",
+  "label": "Panasonic Fire TV (2025)",
+  "platform": "firetv",
+  "engine": "chrome-122",
+  "player": "edge",
+  "userAgent": "Mozilla/5.0 (Linux; Android 11; AFTEMU25 Build/RS8180) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.128 Mobile Safari/537.36 cordova-amazon-fireos/3.4.0 AmazonWebAppPlatform/3.4.0;2.0",
+  "viewport": { "width": 1920, "height": 1080 },
+  "platformVersion": "8",
+  "keys": {
+    "back": 4,
+    "enter": 13,
+    "left": 37,
+    "up": 38,
+    "right": 39,
+    "down": 40,
+    "red": 403,
+    "green": 404,
+    "yellow": 405,
+    "blue": 406
+  },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
+  "memoryMb": null,
+  "cpuPercent": null,
+  "product": {
+    "model": "TV-65Z95B",
+    "modelCode": "AFTEMU25",
+    "firmware": "RS8180",
+    "duid": "EMULATOR-PANASONIC-2025",
+    "uhd": true,
+    "brand": "Panasonic"
+  }
+}

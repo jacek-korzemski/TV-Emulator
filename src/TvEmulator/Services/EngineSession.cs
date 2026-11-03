@@ -16,6 +16,9 @@ public sealed class EngineSession : IDisposable
     public bool HostManagedWindow { get; set; }
     public int? ColorKey { get; set; }
 
+    /// <summary>The page is captured off this window. It stays buried instead of carrying a color key.</summary>
+    public bool GpuChroma { get; set; }
+
     /// <summary>The page area covers the stage exactly, or fitting gave up.</summary>
     public bool Fitted { get; private set; }
     public event Action? Exited;
@@ -113,7 +116,7 @@ public sealed class EngineSession : IDisposable
         }
 
         NativeMethods.MakeBorderless(hwnd);
-        NativeMethods.PlaceOnTop(hwnd, rect.X, rect.Y, rect.Width, rect.Height);
+        PlaceEngine(hwnd, rect.X, rect.Y, rect.Width, rect.Height);
         ApplyColorKey(hwnd);
         _fits = 0;
         Fit(hwnd, rect);
@@ -135,7 +138,7 @@ public sealed class EngineSession : IDisposable
             return;
         }
 
-        var compositionReady = ColorKey is null || NativeMethods.HasColorKey(hwnd);
+        var compositionReady = GpuChroma || ColorKey is null || NativeMethods.HasColorKey(hwnd);
         if (hwnd == WindowHandle && !NativeMethods.HasCaption(hwnd) && compositionReady)
         {
             if (_redraws > 0)
@@ -144,6 +147,8 @@ public sealed class EngineSession : IDisposable
                 NativeMethods.Redraw(hwnd);
             }
 
+            if (GpuChroma)
+                NativeMethods.Sink(hwnd);
             Fit(hwnd, rect);
             return;
         }
@@ -152,9 +157,35 @@ public sealed class EngineSession : IDisposable
             _fits = 0;
         WindowHandle = hwnd;
         NativeMethods.MakeBorderless(hwnd);
-        NativeMethods.PlaceOnTop(hwnd, rect.X, rect.Y, rect.Width, rect.Height);
+        PlaceEngine(hwnd, rect.X, rect.Y, rect.Width, rect.Height);
         ApplyColorKey(hwnd);
         Fit(hwnd, rect);
+    }
+
+    /// <summary>Where the page sits inside the Chromium window, plus that window's size.</summary>
+    public bool TryPageCrop(out PixelRect pageInWindow, out PixelRect window)
+    {
+        pageInWindow = default;
+        window = default;
+        if (WindowHandle == IntPtr.Zero)
+            return false;
+        if (NativeMethods.WindowBounds(WindowHandle) is not { } outer)
+            return false;
+        if (NativeMethods.ContentBounds(WindowHandle) is not { } page)
+            return false;
+        if (page.Width < 1 || page.Height < 1 || outer.Width < 1 || outer.Height < 1)
+            return false;
+        pageInWindow = new PixelRect(page.X - outer.X, page.Y - outer.Y, page.Width, page.Height);
+        window = outer;
+        return true;
+    }
+
+    private void PlaceEngine(IntPtr hwnd, int x, int y, int width, int height)
+    {
+        if (GpuChroma)
+            NativeMethods.Bury(hwnd, x, y, width, height);
+        else
+            NativeMethods.PlaceOnTop(hwnd, x, y, width, height);
     }
 
     private void Fit(IntPtr hwnd, PixelRect stage)
@@ -171,12 +202,16 @@ public sealed class EngineSession : IDisposable
         if (window is not { } outer || content is not { } page || page == stage)
         {
             Fitted = true;
+            if (GpuChroma)
+                NativeMethods.Sink(hwnd);
             return;
         }
 
         if (_fits >= MaxFits)
         {
             Fitted = true;
+            if (GpuChroma)
+                NativeMethods.Sink(hwnd);
             return;
         }
 
@@ -191,7 +226,7 @@ public sealed class EngineSession : IDisposable
         _fits++;
         Fitted = false;
         var target = ViewportFit.AroundContent(stage, outer, page);
-        NativeMethods.PlaceOnTop(hwnd, target.X, target.Y, target.Width, target.Height);
+        PlaceEngine(hwnd, target.X, target.Y, target.Width, target.Height);
         NativeMethods.ClipTo(hwnd, target == stage
             ? null
             : new PixelRect(stage.X - target.X, stage.Y - target.Y, stage.Width, stage.Height));
@@ -199,7 +234,7 @@ public sealed class EngineSession : IDisposable
 
     private void ApplyColorKey(IntPtr hwnd)
     {
-        if (ColorKey is not int key)
+        if (GpuChroma || ColorKey is not int key)
             return;
         NativeMethods.ApplyColorKey(hwnd, key);
         _redraws = 3;

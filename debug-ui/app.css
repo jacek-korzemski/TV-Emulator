@@ -97,6 +97,20 @@ header {
   padding: 8px 12px;
 }
 
+#toolbar label.gc-interval {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+#toolbar input[type="range"] {
+  flex: 1 1 140px;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+
 #scroller-wrap {
   position: relative;
   flex: 1;

@@ -18,20 +18,23 @@ A short public overview lives at <https://jacek-korzemski.github.io/TV-Emulator/
 | Samsung Tizen 4.0 (2018) | 56 | avplay |
 | Samsung Tizen 5.0 (2019) | 63 | avplay |
 | Samsung Tizen 6.5 (2022) | 85 | avplay |
+| Samsung Tizen 9.0 (2025) | Chrome 120 | avplay |
 | LG webOS TV 4.x (2018–2019) | 53 | edge |
 | Hisense VIDAA U2-class | 74 | edge |
 | Hisense VIDAA U6 | 88 | edge |
+| Hisense VIDAA 9 (2025) | 111 | edge |
 | Vizio SmartCast | 47, 56, 63 | edge |
 | Philips NetTV / early Saphi | 49 | edge |
 | Philips Saphi 2020–2022 | 84 | edge |
 | Titan OS | Chrome 122 | edge |
 | HbbTV 1.5 | 53 | edge |
 | Panasonic my Home Screen (2016) | Firefox 44 | edge |
+| Panasonic Fire TV (2025) | Chrome 122 | edge |
 | Sony BRAVIA / Vewd | 47 | edge |
 
-The page runs in that pinned browser, with a shim for the set (`tizen`, `webapis`, `webOS`, VIDAA `Hisense_Get*`, `VIZIO`, Philips `DeviceInfo`, HbbTV `video/broadcast`, `Panasonic`, or `Sony`) plus the remote key codes.
+The page runs in that pinned browser, with a shim for the set (`tizen`, `webapis`, `webOS`, VIDAA `Hisense_Get*`, `VIZIO`, Philips `DeviceInfo`, HbbTV `video/broadcast`, `Panasonic`, `Sony`, or a Fire TV user agent) plus the remote key codes.
 
-`edge` means the picture is the WebView2 plane under the page. `page` means the page's own engine plays it. Titan still runs the page in Chrome for Testing 122, but that build has no Widevine CDM, so the picture goes through the Edge plane like the older Chromium sets. Public Chromium snapshots still have no H.264 and no Widevine, so VIDAA U6 stays on `edge` even though that generation's Chrome is newer. Panasonic is Firefox 44 (Firefox OS 2.5). That build has no Widevine CDM, so the picture uses the Edge plane. It also has no Chrome DevTools Protocol, so the live console, network, and memory tabs stay empty; the session log still works. Sony is Chromium 47 with an OMI user agent. The Vewd TV binary is not public.
+`edge` means the picture is the WebView2 plane under the page. `page` means the page's own engine plays it. Titan still runs the page in Chrome for Testing 122, but that build has no Widevine CDM, so the picture goes through the Edge plane like the older Chromium sets. Public Chromium snapshots still have no H.264 and no Widevine, so VIDAA U6 and VIDAA 9 stay on `edge` even though those generations' Chrome is newer. Tizen 9.0 is Chrome 120 and still plays through avplay. Panasonic Fire TV (2025) runs the page in the same Chrome 122 as Titan, recognizes the set from an `AmazonWebAppPlatform` user agent, and uses Back as keyCode 4. Its picture stays on the Edge plane. Panasonic my Home Screen from 2016 is Firefox 44 (Firefox OS 2.5). That build has no Widevine CDM, so the picture uses the Edge plane. It also has no Chrome DevTools Protocol, so the live console, network, and memory tabs stay empty; the session log still works. Sony is Chromium 47 with an OMI user agent. The Vewd TV binary is not public.
 
 Video does not play inside that old Chromium. Those builds lack the codecs and DRM a TV app expects.
 

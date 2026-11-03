@@ -72,6 +72,22 @@
     "args": ["--no-sandbox", "--disable-gpu", "--no-proxy-server"]
   },
   {
+    "id": "chromium-111",
+    "milestone": 111,
+    "revision": 1097610,
+    "versionLabel": "111.0.5563.0",
+    "archive": "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Win_x64/1097610/chrome-win.zip",
+    "args": ["--no-sandbox", "--disable-gpu", "--no-proxy-server"]
+  },
+  {
+    "id": "chrome-120",
+    "milestone": 120,
+    "revision": 1217362,
+    "versionLabel": "120.0.6099.109",
+    "archive": "https://storage.googleapis.com/chrome-for-testing-public/120.0.6099.109/win64/chrome-win64.zip",
+    "args": ["--no-sandbox", "--disable-gpu", "--no-proxy-server"]
+  },
+  {
     "id": "chrome-122",
     "milestone": 122,
     "revision": 1250580,

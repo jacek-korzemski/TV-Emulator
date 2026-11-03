@@ -30,6 +30,7 @@ public sealed class CdpWatcher : IDisposable
     {
         var watcher = new CdpWatcher(hub, video);
         hub.SnapshotRequested += watcher.OnSnapshot;
+        hub.GcTrackingRequested += watcher.OnGcTracking;
         _ = watcher.LoopAsync();
         return watcher;
     }
@@ -40,6 +41,7 @@ public sealed class CdpWatcher : IDisposable
             return;
         CancelLoss();
         _hub.SnapshotRequested -= OnSnapshot;
+        _hub.GcTrackingRequested -= OnGcTracking;
         _cts.Cancel();
         lock (_gate)
         {
@@ -204,6 +206,7 @@ public sealed class CdpWatcher : IDisposable
 
     private void ElectPrimary(string source)
     {
+        var pending = new List<(CdpPage Page, bool Track)>();
         lock (_gate)
         {
             CdpPage? chosen = null;
@@ -220,12 +223,25 @@ public sealed class CdpWatcher : IDisposable
                 }
             }
 
+            var track = _hub.GcTracking(source);
             foreach (var page in _pages)
             {
-                if (page.Source == source)
-                    page.PollMemory = page == chosen && rank > 0;
+                if (page.Source != source)
+                    continue;
+                page.PollMemory = page == chosen && rank > 0;
+                pending.Add((page, track && page.PollMemory));
             }
         }
+
+        foreach (var (page, track) in pending)
+            _ = page.TrackGcAsync(track);
+    }
+
+    private void OnGcTracking(string source, bool on)
+    {
+        if (_disposed == 1)
+            return;
+        ElectPrimary(source);
     }
 
     private static int Rank(CdpPage page, string source)
@@ -288,7 +304,8 @@ public sealed class CdpWatcher : IDisposable
         private readonly Dictionary<int, (long Count, long Size)> _fragments = new();
         private FileStream? _heapFile;
         private string? _heapPath;
-        private bool _trackingAttempted;
+        private volatile bool _trackingGc;
+        private int _trackGeneration;
         private long _lastGcTick;
         private long _lastGcCount = -1;
         private long _lastGcSize = -1;
@@ -356,6 +373,28 @@ public sealed class CdpWatcher : IDisposable
                 {
                     try { await poll; } catch (Exception) { }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Heap samples are performance.memory on the hub interval. This only stops a V8
+        /// object tracker if an older session left one running. Starting that tracker walks
+        /// the whole heap about every 50 ms and drops the page to a few frames.
+        /// </summary>
+        public async Task TrackGcAsync(bool on)
+        {
+            if (on || !IsReady || !_trackingGc)
+                return;
+            var generation = Interlocked.Increment(ref _trackGeneration);
+            try
+            {
+                var result = await CallAsync("HeapProfiler.stopTrackingHeapObjects",
+                    null, TimeSpan.FromSeconds(4), ignoreError: true);
+                if (result is not null && generation == Volatile.Read(ref _trackGeneration))
+                    _trackingGc = false;
+            }
+            catch (OperationCanceledException)
+            {
             }
         }
 
@@ -549,22 +588,19 @@ public sealed class CdpWatcher : IDisposable
         {
             while (!_cts.IsCancellationRequested)
             {
+                var sample = PollMemory && IsReady && _hub.GcTracking(Source);
+                var wait = sample ? _hub.GcIntervalMs() : 250;
                 try
                 {
-                    await Task.Delay(2000, _cts.Token);
+                    await Task.Delay(wait, _cts.Token);
                 }
                 catch (Exception)
                 {
                     break;
                 }
 
-                if (!PollMemory || !IsReady)
+                if (!PollMemory || !IsReady || !_hub.GcTracking(Source))
                     continue;
-                if (!_trackingAttempted)
-                {
-                    _trackingAttempted = true;
-                    await CallAsync("HeapProfiler.startTrackingHeapObjects", null, TimeSpan.FromSeconds(4), ignoreError: true);
-                }
 
                 try
                 {
@@ -573,9 +609,9 @@ public sealed class CdpWatcher : IDisposable
                         ["expression"] = CdpProtocol.MemoryExpression,
                         ["returnByValue"] = true
                     }, TimeSpan.FromSeconds(3), ignoreError: true);
-                    var sample = CdpProtocol.ReadMemory(result, Source);
-                    if (sample is not null)
-                        _hub.AddMemory(sample);
+                    var reading = CdpProtocol.ReadMemory(result, Source);
+                    if (reading is not null)
+                        _hub.AddMemory(reading);
                 }
                 catch (OperationCanceledException)
                 {

@@ -265,6 +265,77 @@
     return lower.toUpperCase();
   };
 
+  const audioFamily = (codecs) => {
+    const lower = String(codecs || '').toLowerCase();
+    if (lower.startsWith('mp4a')) return 'aac';
+    if (lower.startsWith('ec-3') || lower.startsWith('ac-3') || lower.startsWith('ac-4')) return 'dolby';
+    return lower;
+  };
+
+  const LANGUAGE_ALIASES = {
+    pol: 'pl', eng: 'en', ger: 'de', deu: 'de', fre: 'fr', fra: 'fr', spa: 'es',
+    ita: 'it', rus: 'ru', ukr: 'uk', cze: 'cs', ces: 'cs', hun: 'hu', slo: 'sk', slk: 'sk'
+  };
+
+  const languageKey = (value) => {
+    const lower = String(value || '').toLowerCase().split('-')[0];
+    return LANGUAGE_ALIASES[lower] || lower;
+  };
+
+  // AVPlay lists one AUDIO track per audio AdaptationSet in manifest order, and
+  // the app picks a track by that position. Shaka splits the same set by codec.
+  let dashAudioSets = null;
+
+  const readDashAudio = (response) => {
+    const decoded = decodeBody(response.data);
+    if (!decoded || decoded.text.indexOf('<MPD') === -1) {
+      return null;
+    }
+    try {
+      const doc = new DOMParser().parseFromString(decoded.text, 'text/xml');
+      return Array.from(doc.querySelectorAll('AdaptationSet[contentType="audio"]')).map((set) => {
+        const label = set.querySelector('Label');
+        const role = set.querySelector('Role');
+        const representation = set.querySelector('Representation[codecs]');
+        const codec = set.getAttribute('codecs') || (representation ? representation.getAttribute('codecs') : '') || '';
+        return {
+          lang: set.getAttribute('lang') || '',
+          label: label ? label.textContent : '',
+          role: role ? role.getAttribute('value') || '' : '',
+          codec,
+          family: audioFamily(codec)
+        };
+      });
+    } catch (ignore) {
+      return null;
+    }
+  };
+
+  const pickDashAudio = (set, audios) => {
+    let pool = audios.filter((audio) => languageKey(audio.language) === languageKey(set.lang));
+    if (!pool.length && set.label) {
+      pool = audios.filter((audio) => audio.label === set.label);
+    }
+    if (!pool.length) {
+      return null;
+    }
+    const sameFamily = pool.filter((audio) => audioFamily(audio.codecs) === set.family);
+    const candidates = sameFamily.length ? sameFamily : pool;
+    return candidates.find((audio) => audio.active) || candidates[0];
+  };
+
+  const audioEntry = (index, audio, language, codec) => ({
+    index,
+    type: 'AUDIO',
+    extra_info: JSON.stringify({
+      language: language || (audio && audio.language) || '',
+      channels: String((audio && audio.channelsCount) || 2),
+      sample_rate: String((audio && audio.audioSamplingRate) || 48000),
+      bit_rate: String((audio && audio.bandwidth) || 0),
+      fourCC: fourCC(codec || (audio && audio.codecs))
+    })
+  });
+
   const trackInfo = () => {
     const tracks = [];
     if (!player) {
@@ -291,22 +362,34 @@
       current.push(entry);
     }
 
-    for (const audio of player.getAudioTracks()) {
-      const entry = {
-        index: index++,
-        type: 'AUDIO',
-        extra_info: JSON.stringify({
-          language: audio.language || '',
-          channels: String(audio.channelsCount || 2),
-          sample_rate: String(audio.audioSamplingRate || 48000),
-          bit_rate: String(audio.bandwidth || 0),
-          fourCC: fourCC(audio.codecs)
-        })
-      };
-      trackRefs.set(entry.index, { kind: 'audio', ref: audio });
-      tracks.push(entry);
-      if (audio.active) {
-        current.push(entry);
+    const audios = player.getAudioTracks();
+    if (dashAudioSets && dashAudioSets.length) {
+      const activeAudio = audios.find((audio) => audio.active) || null;
+      let currentAudio = null;
+      let fallbackAudio = null;
+      for (const set of dashAudioSets) {
+        const audio = pickDashAudio(set, audios);
+        const entry = audioEntry(index++, audio, set.lang, set.codec);
+        trackRefs.set(entry.index, { kind: 'audio', ref: audio });
+        tracks.push(entry);
+        if (audio && audio === activeAudio) {
+          if (!currentAudio && set.family === audioFamily(activeAudio.codecs)) {
+            currentAudio = entry;
+          }
+          fallbackAudio = fallbackAudio || entry;
+        }
+      }
+      if (currentAudio || fallbackAudio) {
+        current.push(currentAudio || fallbackAudio);
+      }
+    } else {
+      for (const audio of audios) {
+        const entry = audioEntry(index++, audio, '', '');
+        trackRefs.set(entry.index, { kind: 'audio', ref: audio });
+        tracks.push(entry);
+        if (audio.active) {
+          current.push(entry);
+        }
       }
     }
 
@@ -688,6 +771,7 @@
 
   const destroyPlayer = async () => {
     playerGeneration += 1;
+    dashAudioSets = null;
     if (failLoad) {
       const reject = failLoad;
       failLoad = null;
@@ -724,6 +808,11 @@
     });
     instance.getNetworkingEngine().registerResponseFilter((type, response) => {
       if (type === NetworkingEngine.RequestType.MANIFEST) {
+        const sets = readDashAudio(response);
+        if (sets && sets.length) {
+          dashAudioSets = sets;
+          emit('log', { text: 'dash audio sets=' + sets.map((set) => set.lang + '/' + set.family).join(',') });
+        }
         const corrected = normalizeMssVideoDurations(response);
         if (corrected > 0) {
           emit('log', { text: 'mss corrected wrapped video durations=' + corrected });
@@ -1268,6 +1357,7 @@
       url = command.url || '';
       licenseServer = '';
       customData = '';
+      dashAudioSets = null;
       wantPlaying = false;
       announcedPrepared = false;
       soapCustomData = false;
@@ -1340,16 +1430,22 @@
     },
     async track(command) {
       const found = trackRefs.get(Number(command.index));
-      if (!found || !player) {
+      if (!found || !found.ref || !player) {
+        emit('log', { text: 'track miss type=' + command.trackType + ' index=' + command.index });
         return;
       }
-      if (found.kind === 'audio') {
-        player.selectAudioTrack(found.ref);
-      } else {
-        player.selectTextTrack(found.ref);
-        if (subtitles) {
-          subtitles.setTextVisibility(true);
+      try {
+        if (found.kind === 'audio') {
+          player.selectAudioTrack(found.ref);
+        } else {
+          player.selectTextTrack(found.ref);
+          if (subtitles) {
+            subtitles.setTextVisibility(true);
+          }
         }
+      } catch (error) {
+        emit('log', { text: 'track switch failed ' + describe(error) });
+        return;
       }
       emit('tracks', trackInfo());
     },

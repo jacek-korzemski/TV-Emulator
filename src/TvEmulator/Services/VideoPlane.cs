@@ -73,6 +73,8 @@ public sealed class VideoPlane : IDisposable
             Math.Max(1, (int)Math.Round(height * scaleY)));
     }
 
+    public IntPtr WindowHandle => _window?.Handle ?? IntPtr.Zero;
+
     public void KeepBelow(IntPtr engineWindow)
     {
         _above = engineWindow;
