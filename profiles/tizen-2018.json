@@ -19,7 +19,7 @@
     "yellow": 405,
     "blue": 406
   },
-  "quirks": { "stripCss": [], "deleteGlobals": ["Proxy"] },
+  "quirks": { "stripCss": [], "deleteGlobals": [] },
   "memoryMb": null,
   "cpuPercent": null,
   "product": {

@@ -114,6 +114,9 @@ public static class SessionPlanner
         if (gpu)
         {
             args.Add("--use-angle=d3d11");
+            // The presenter keys #010001 with a 1/255 tolerance. A monitor color profile
+            // applied by the GPU compositor shifts that pixel and closes the video hole.
+            args.Add("--force-color-profile=srgb");
             args.Add(engine.Milestone < 86 ? "--ignore-gpu-blacklist" : "--ignore-gpu-blocklist");
             args.Add("--disable-background-timer-throttling");
             args.Add("--disable-renderer-backgrounding");

@@ -10,6 +10,7 @@ public static class NativeMethods
     public const int GwlpHwndParent = -8;
     public const int WsExTransparent = 0x00000020;
     public const int WsExToolWindow = 0x00000080;
+    public const int WsExTopMost = 0x00000008;
     public const int WsExLayered = 0x00080000;
     public const int WsExNoActivate = 0x08000000;
     public const uint LwaColorKey = 0x00000001;
@@ -41,6 +42,7 @@ public static class NativeMethods
     public const uint ModNoRepeat = 0x4000;
     public const uint VkQ = 0x51;
     public const int HotkeyId = 0x5476;
+    public const uint GwHwndNext = 2;
 
     private const uint Th32CsSnapProcess = 0x00000002;
 
@@ -75,9 +77,21 @@ public static class NativeMethods
         SetWindowPos(hwnd, HwndBottom, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate | SwpShowWindow);
     }
 
+    /// <summary>True when the window is already under every other top-level window.</summary>
+    public static bool IsAtBottom(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero)
+            return false;
+        if ((GetExStyle(hwnd) & WsExTopMost) != 0)
+            return false;
+        return GetWindow(hwnd, GwHwndNext) == IntPtr.Zero;
+    }
+
     /// <summary>Keep a covered engine window from popping back over the presenter.</summary>
     public static void Sink(IntPtr hwnd)
     {
+        if (IsAtBottom(hwnd))
+            return;
         SetWindowPos(hwnd, HwndNoTopMost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate | SwpShowWindow);
         SetWindowPos(hwnd, HwndBottom, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate | SwpShowWindow);
     }
@@ -442,6 +456,9 @@ public static class NativeMethods
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool GetLayeredWindowAttributes(IntPtr hwnd, out uint crKey, out byte bAlpha, out uint dwFlags);

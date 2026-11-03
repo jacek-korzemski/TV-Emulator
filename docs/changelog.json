@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "date": "2026-11-03",
+      "title": "Subtitles and audio tracks",
+      "items": [
+        "Tizen subtitles are downloaded like on the television and shown over the picture. Turning them off hides them again.",
+        "On Tizen 2022 the audio list follows the stream manifest, so choosing the other language switches the track.",
+        "On WebOS and SmartCast the captions are drawn over the video hole. The page video stays invisible, so the picture underneath still shows."
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "title": "Faster GPU picture and Proxy on Tizen 4.0",
+      "items": [
+        "The GPU picture no longer waits for vsync after every frame. Windows already syncs the composition, so menus move without the extra stall.",
+        "Each captured frame is copied and handed back to Windows at once. Holding it while drawing could stop new frames from arriving.",
+        "A 1:1 picture is drawn without filtering, and the covered browser window is only pushed down when something has moved above it.",
+        "The session log reports the GPU picture pace every few seconds: frames per second, draw time, and dropped frames.",
+        "Samsung Tizen 4.0 (2018) keeps the browser's own Proxy. An app that builds a Proxy no longer stops on the login screen.",
+        "GPU sessions render in sRGB, so a monitor color profile cannot shift the key color and close the video hole."
+      ]
+    },
+    {
       "date": "2026-10-27",
       "title": "Chromium picture on the GPU",
       "items": [

@@ -347,6 +347,12 @@
             reportRpc(xhr.__emuMethod, xhr.__emuUrl, xhr.__emuHeaders, xhr.__emuBody, xhr.status, text);
           });
         }
+        if (profile.debug) {
+          var watched = String(xhr.__emuUrl || "");
+          if (/\.mpd(\?|$)|\/manifest(\?|$)/i.test(watched)) {
+            post("/__emulator/log", "xhr-send " + xhr.__emuMethod + " " + watched);
+          }
+        }
         return origSend.apply(xhr, arguments);
       };
     }
@@ -673,6 +679,9 @@
 
     var info = appInfo();
     var appId = info.id || "emulator.app";
+    var files = {};
+    var downloads = {};
+    var downloadSeq = 1;
     var currentApp = {
       exit: requestExit,
       hide: requestExit,
@@ -700,9 +709,150 @@
       removeEventListener: function () {}
     };
 
+    function DownloadRequest(url, destination, fileName, networkType, httpHeader) {
+      this.url = url || "";
+      this.destination = destination || "downloads";
+      this.fileName = fileName || "";
+      this.networkType = networkType || "ALL";
+      this.httpHeader = httpHeader || {};
+    }
+
+    function decodeText(buffer) {
+      var bytes = new Uint8Array(buffer || new ArrayBuffer(0));
+      if (typeof global.TextDecoder !== "function") {
+        var plain = "";
+        var i;
+        for (i = 0; i < bytes.length; i++) {
+          plain += String.fromCharCode(bytes[i]);
+        }
+        return plain;
+      }
+      try {
+        return new global.TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      } catch (notUtf8) {
+        try {
+          return new global.TextDecoder("windows-1250").decode(bytes);
+        } catch (noLegacy) {
+          return new global.TextDecoder("utf-8").decode(bytes);
+        }
+      }
+    }
+
+    function downloadName(request) {
+      if (request.fileName) {
+        return request.fileName;
+      }
+      var path = String(request.url).split(/[?#]/)[0];
+      return path.substring(path.lastIndexOf("/") + 1) || "download";
+    }
+
+    // AVPlay reads an external subtitle file from the TV's file system. The
+    // file stays in page memory; setExternalSubtitlePath looks it up by path.
+    function startDownload(request, callbacks) {
+      if (!(request instanceof DownloadRequest)) {
+        throw new WebAPIException(17, "DownloadRequest expected", "TypeMismatchError");
+      }
+      var id = downloadSeq;
+      downloadSeq += 1;
+      var handlers = callbacks || {};
+      var xhr = new XMLHttpRequest();
+      downloads[id] = { request: request, state: "DOWNLOADING", handlers: handlers, xhr: xhr };
+
+      function notify(name) {
+        var fn = handlers[name];
+        if (typeof fn === "function") {
+          try {
+            fn.apply(handlers, Array.prototype.slice.call(arguments, 1));
+          } catch (err) {
+            trace("download listener " + name + " threw " + (err && err.message ? err.message : err));
+          }
+        }
+      }
+
+      function fail(message) {
+        downloads[id].state = "FAILED";
+        notify("onfailed", id, new WebAPIException(0, message, "NetworkError"));
+      }
+
+      xhr.open("GET", request.url, true);
+      xhr.responseType = "arraybuffer";
+      var headers = request.httpHeader || {};
+      var name;
+      for (name in headers) {
+        if (Object.prototype.hasOwnProperty.call(headers, name)) {
+          xhr.setRequestHeader(name, String(headers[name]));
+        }
+      }
+      xhr.onload = function () {
+        if (downloads[id].state !== "DOWNLOADING") {
+          return;
+        }
+        if (xhr.status < 200 || xhr.status >= 300) {
+          fail("HTTP " + xhr.status);
+          return;
+        }
+        var size = xhr.response ? xhr.response.byteLength : 0;
+        var fullPath = "/opt/usr/home/owner/apps_rw/" + packageIdOf(appId) + "/tmp/" + downloadName(request);
+        files[fullPath] = decodeText(xhr.response);
+        downloads[id].state = "COMPLETED";
+        downloads[id].fullPath = fullPath;
+        trace("download " + request.url + " -> " + fullPath + " " + size + " bytes");
+        notify("onprogress", id, size, size);
+        notify("oncompleted", id, fullPath);
+      };
+      xhr.onerror = function () {
+        if (downloads[id].state === "DOWNLOADING") {
+          fail("network error");
+        }
+      };
+      xhr.send();
+      return id;
+    }
+
+    function setDownloadState(id, next) {
+      var entry = downloads[id];
+      if (!entry) {
+        throw new WebAPIException(8, "Unknown download " + id, "NotFoundError");
+      }
+      if (entry.state === "DOWNLOADING" && next === "CANCELED") {
+        entry.xhr.abort();
+        entry.state = next;
+        if (typeof entry.handlers.oncanceled === "function") {
+          entry.handlers.oncanceled(id);
+        }
+      }
+    }
+
     global.tizen = {
       ApplicationControlData: ApplicationControlData,
       ApplicationControl: ApplicationControl,
+      DownloadRequest: DownloadRequest,
+      download: {
+        start: startDownload,
+        cancel: function (id) { setDownloadState(id, "CANCELED"); },
+        pause: function () {},
+        resume: function () {},
+        abandon: function (id) { setDownloadState(id, "CANCELED"); },
+        getState: function (id) {
+          var entry = downloads[id];
+          if (!entry) {
+            throw new WebAPIException(8, "Unknown download " + id, "NotFoundError");
+          }
+          return entry.state;
+        },
+        getDownloadRequest: function (id) {
+          var entry = downloads[id];
+          return entry ? entry.request : null;
+        },
+        getMIMEType: function () {
+          return "text/plain";
+        },
+        setListener: function (id, callbacks) {
+          if (downloads[id]) {
+            downloads[id].handlers = callbacks || {};
+          }
+        }
+      },
       application: {
         getCurrentApplication: function () { return currentApp; },
         getAppInfo: function (id) {
@@ -864,7 +1014,7 @@
           delete listeners[id];
         }
       },
-      avplay: createAvplay()
+      avplay: createAvplay(files)
     };
   }
 
@@ -874,7 +1024,7 @@
    * this window. The plane shows through wherever the page paints the key color (VideoPlane.KeyColor
    * on the host), the same way the TV video layer shows through under <object type="application/avplayer">.
    */
-  function createAvplay() {
+  function createAvplay(files) {
     var state = "NONE";
     var gen = 0;
     var head = -1;
@@ -891,6 +1041,9 @@
     var pendingPrepare = null;
     var jumps = {};
     var jumpSeq = 1;
+    var externalCues = null;
+    var externalCue = null;
+    var silentSubtitle = false;
 
     installVideoSurface();
     post("/__emulator/avplay", JSON.stringify({ cmd: "reset", gen: 0 }));
@@ -950,6 +1103,115 @@
       return copy;
     }
 
+    function clockMs(text) {
+      var match = /(?:(\d+):)?(\d{1,2}):(\d{1,2})[,.](\d{1,3})/.exec(text || "");
+      if (!match) {
+        return NaN;
+      }
+      var hours = Number(match[1] || 0);
+      var fraction = Number((match[4] + "00").substring(0, 3));
+      return ((hours * 60 + Number(match[2])) * 60 + Number(match[3])) * 1000 + fraction;
+    }
+
+    // SRT and WebVTT share the "start --> end" timing line.
+    function parseTimedText(source) {
+      var cues = [];
+      var blocks = source.split(/\n{2,}/);
+      var i;
+      for (i = 0; i < blocks.length; i++) {
+        var lines = blocks[i].split("\n");
+        var at = -1;
+        var j;
+        for (j = 0; j < lines.length; j++) {
+          if (lines[j].indexOf("-->") !== -1) {
+            at = j;
+            break;
+          }
+        }
+        if (at === -1) {
+          continue;
+        }
+        var times = lines[at].split("-->");
+        var start = clockMs(times[0]);
+        var end = clockMs(times[1]);
+        var body = lines.slice(at + 1).join("<br>").replace(/^(\s|<br>)+|(\s|<br>)+$/g, "");
+        if (!isNaN(start) && !isNaN(end) && end > start && body) {
+          cues.push({ start: start, end: end, text: body });
+        }
+      }
+      return cues;
+    }
+
+    // SAMI: each <SYNC Start=ms> replaces the previous caption; &nbsp; clears it.
+    function parseSami(source) {
+      var cues = [];
+      var chunks = source.split(/<sync\b/i);
+      var i;
+      for (i = 1; i < chunks.length; i++) {
+        var start = /start\s*=\s*["']?(\d+)/i.exec(chunks[i]);
+        if (!start) {
+          continue;
+        }
+        var body = chunks[i].substring(chunks[i].indexOf(">") + 1)
+          .replace(/<\/?(p|sync|body|sami)\b[^>]*>/gi, "")
+          .replace(/&nbsp;/gi, " ")
+          .replace(/^\s+|\s+$/g, "");
+        if (cues.length && cues[cues.length - 1].end == null) {
+          cues[cues.length - 1].end = Number(start[1]);
+        }
+        if (body) {
+          cues.push({ start: Number(start[1]), end: null, text: body });
+        }
+      }
+      var kept = [];
+      for (i = 0; i < cues.length; i++) {
+        if (cues[i].end == null) {
+          cues[i].end = cues[i].start + 5000;
+        }
+        if (cues[i].end > cues[i].start) {
+          kept.push(cues[i]);
+        }
+      }
+      return kept;
+    }
+
+    function parseSubtitles(text) {
+      var source = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+      var cues = /<sync\b/i.test(source) ? parseSami(source) : parseTimedText(source);
+      cues.sort(function (left, right) { return left.start - right.start; });
+      return cues;
+    }
+
+    function cueAt(cues, ms) {
+      var low = 0;
+      var high = cues.length - 1;
+      var found = -1;
+      while (low <= high) {
+        var middle = (low + high) >> 1;
+        if (cues[middle].start <= ms) {
+          found = middle;
+          low = middle + 1;
+        } else {
+          high = middle - 1;
+        }
+      }
+      return found !== -1 && cues[found].end > ms ? cues[found] : null;
+    }
+
+    function showExternalSubtitle() {
+      if (!externalCues || silentSubtitle) {
+        return;
+      }
+      var cue = cueAt(externalCues, timeMs);
+      if (cue === externalCue) {
+        return;
+      }
+      externalCue = cue;
+      if (cue) {
+        call("onsubtitlechange", cue.end - timeMs, cue.text, 0, "");
+      }
+    }
+
     function deliver(evt) {
       if (evt.gen != null && evt.gen !== gen) {
         return;
@@ -991,6 +1253,7 @@
           }
           if (state === "PLAYING") {
             call("oncurrentplaytime", timeMs);
+            showExternalSubtitle();
           }
           break;
         case "buffering":
@@ -1083,6 +1346,7 @@
       jumpSeq += 1;
       jumps[id] = { ok: ok, err: err };
       command.callback = id;
+      externalCue = null;
       send(command);
     }
 
@@ -1105,6 +1369,9 @@
         properties = {};
         pendingPrepare = null;
         jumps = {};
+        externalCues = null;
+        externalCue = null;
+        silentSubtitle = false;
         send({ cmd: "open", url: url });
         state = "IDLE";
       },
@@ -1114,6 +1381,8 @@
         }
         pendingPrepare = null;
         state = "NONE";
+        externalCues = null;
+        externalCue = null;
         send({ cmd: "close" });
       },
       prepare: function () {
@@ -1225,10 +1494,21 @@
       },
       setExternalSubtitlePath: function (path) {
         properties.EXTERNAL_SUBTITLE_PATH = path;
-        trace("setExternalSubtitlePath is not played on the video plane: " + path);
+        externalCue = null;
+        var text = files ? files[String(path)] : null;
+        if (text == null) {
+          externalCues = null;
+          trace("setExternalSubtitlePath has no downloaded file at " + path);
+          return true;
+        }
+        externalCues = parseSubtitles(text);
+        trace("setExternalSubtitlePath " + path + " cues=" + externalCues.length);
         return true;
       },
-      setSilentSubtitle: function () {},
+      setSilentSubtitle: function (mute) {
+        silentSubtitle = mute === true;
+        externalCue = null;
+      },
       setSubtitlePosition: function () {},
       setSpeed: function (rate) {
         requireState("setSpeed", ["READY", "PLAYING", "PAUSED"]);
@@ -1930,6 +2210,12 @@
    */
   function installEdgePlayback() {
     var keyColor = "#010001";
+    installCueCapture();
+    global.setInterval(function () {
+      if (planeVideo && planeVideo.__tvPlane) {
+        renderPlaneSubtitles(planeVideo);
+      }
+    }, 250);
     var mediaSeq = 1;
     var head = 0;
     var polling = false;
@@ -2217,8 +2503,120 @@
         fire(video, "loadeddata");
       }
       releaseCanPlay(video);
+      renderPlaneSubtitles(video);
       if (video.__tvTime !== previous) {
         fire(video, "timeupdate");
+      }
+    }
+
+    // Shaka draws captions on the page video. That element is invisible so the
+    // Edge picture can show through the key color, which also hides the cues.
+    // The browser clock never moves (we only fake currentTime), so cue timing
+    // follows the plane clock and the text is painted over the hole.
+    function installCueCapture() {
+      var proto = global.TextTrack && global.TextTrack.prototype;
+      if (!proto || proto.__tvAddCue || typeof proto.addCue !== "function") {
+        return;
+      }
+      proto.__tvAddCue = true;
+      var origAdd = proto.addCue;
+      var origRemove = proto.removeCue;
+      proto.addCue = function (cue) {
+        if (!this.__tvCues) {
+          this.__tvCues = [];
+        }
+        this.__tvCues.push(cue);
+        try {
+          return origAdd.apply(this, arguments);
+        } catch (ignoreCue) {}
+      };
+      if (typeof origRemove === "function") {
+        proto.removeCue = function (cue) {
+          var list = this.__tvCues || [];
+          var next = [];
+          var i;
+          for (i = 0; i < list.length; i++) {
+            if (list[i] !== cue) {
+              next.push(list[i]);
+            }
+          }
+          this.__tvCues = next;
+          return origRemove.apply(this, arguments);
+        };
+      }
+    }
+
+    function cueList(track) {
+      if (track.cues && track.cues.length) {
+        return track.cues;
+      }
+      return track.__tvCues || [];
+    }
+
+    function subtitleText(video) {
+      var tracks = video.textTracks;
+      if (!tracks) {
+        return "";
+      }
+      var time = video.__tvTime || 0;
+      var lines = [];
+      var i;
+      var j;
+      for (i = 0; i < tracks.length; i++) {
+        var track = tracks[i];
+        if (!track || track.mode !== "showing") {
+          continue;
+        }
+        var cues = cueList(track);
+        for (j = 0; j < cues.length; j++) {
+          var cue = cues[j];
+          if (cue && cue.startTime <= time && cue.endTime > time && cue.text) {
+            lines.push(String(cue.text));
+          }
+        }
+      }
+      return lines.join("\n");
+    }
+
+    function ensureSubtitleOverlay(video) {
+      var overlay = video.__tvSubs;
+      if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.setAttribute("data-tv-subs", "1");
+        overlay.style.position = "absolute";
+        overlay.style.left = "0";
+        overlay.style.right = "0";
+        overlay.style.bottom = "8%";
+        overlay.style.zIndex = "4";
+        overlay.style.pointerEvents = "none";
+        overlay.style.textAlign = "center";
+        overlay.style.whiteSpace = "pre-line";
+        overlay.style.color = "#fff";
+        overlay.style.font = "700 42px sans-serif";
+        overlay.style.lineHeight = "1.25";
+        overlay.style.textShadow = "0 0 4px #000, 0 2px 2px #000";
+        overlay.style.padding = "0 8%";
+        video.__tvSubs = overlay;
+      }
+      var parentNode = video.parentNode;
+      if (parentNode && overlay.parentNode !== parentNode) {
+        if (video.nextSibling) {
+          parentNode.insertBefore(overlay, video.nextSibling);
+        } else {
+          parentNode.appendChild(overlay);
+        }
+      }
+      return overlay;
+    }
+
+    function renderPlaneSubtitles(video) {
+      if (!video || !video.__tvPlane) {
+        return;
+      }
+      var overlay = ensureSubtitleOverlay(video);
+      var text = subtitleText(video);
+      if (overlay.textContent !== text) {
+        overlay.textContent = text;
       }
     }
 
@@ -2362,6 +2760,10 @@
         video.__tvHole.parentNode.removeChild(video.__tvHole);
       }
       video.__tvHole = null;
+      if (video.__tvSubs && video.__tvSubs.parentNode) {
+        video.__tvSubs.parentNode.removeChild(video.__tvSubs);
+      }
+      video.__tvSubs = null;
       if (planeVideo === video) {
         planeVideo = null;
         postControl({ op: "close" });

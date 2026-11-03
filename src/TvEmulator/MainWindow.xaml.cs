@@ -489,6 +489,7 @@ public partial class MainWindow : Window
             presenter.FrameReady += () => Dispatcher.BeginInvoke(OnChromaFrame);
             presenter.Failed += reason => Dispatcher.BeginInvoke(() =>
             {
+                _sessionLog?.Write("chroma failed " + reason);
                 if (!_chromaReady)
                     FallbackToColorKey(reason);
             });

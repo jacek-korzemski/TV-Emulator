@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Globalization;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using Vortice.Direct2D1;
@@ -36,6 +38,7 @@ public sealed class ChromaPresenter : IDisposable
     const int WmRButtonUp = 0x0205;
     const int WmMButtonDown = 0x0207;
     const int WmMButtonUp = 0x0208;
+    const int FramePoolBuffers = 3;
     const int WmMouseWheel = 0x020A;
     const int WmKeyDown = 0x0100;
     const int WmKeyUp = 0x0101;
@@ -70,9 +73,16 @@ public sealed class ChromaPresenter : IDisposable
     ID2D1DeviceContext? _d2dContext;
     ID2D1Bitmap1? _target;
     ID2D1Effect? _effect;
+    readonly ID3D11Texture2D?[] _copies = new ID3D11Texture2D?[2];
+    readonly ID2D1Bitmap1?[] _copyBitmaps = new ID2D1Bitmap1?[2];
+    int _copySlot;
+    int _droppedPresents;
     GraphicsCaptureItem? _item;
     Direct3D11CaptureFramePool? _pool;
     GraphicsCaptureSession? _session;
+    int _presented;
+    long _drawTicks;
+    long _statStamp;
     int _width;
     int _height;
     int _pendingWidth;
@@ -154,7 +164,7 @@ public sealed class ChromaPresenter : IDisposable
             _pool = Direct3D11CaptureFramePool.CreateFreeThreaded(
                 _winrtDevice,
                 DirectXPixelFormat.B8G8R8A8UIntNormalized,
-                2,
+                FramePoolBuffers,
                 size);
             _session = _pool.CreateCaptureSession(_item);
             _session.IsCursorCaptureEnabled = false;
@@ -198,6 +208,7 @@ public sealed class ChromaPresenter : IDisposable
             _pool?.Dispose();
             _item = null;
             _effect?.Dispose();
+            ClearCopies();
             _target?.Dispose();
             _d2dContext?.Dispose();
             _d2dDevice?.Dispose();
@@ -231,11 +242,22 @@ public sealed class ChromaPresenter : IDisposable
             {
                 if (_closed || _pool is null || _d2dContext is null || _effect is null || _swapChain is null || _dcomp is null)
                     return;
-                using var frame = _pool.TryGetNextFrame();
-                if (frame is null)
-                    return;
-                EnsureTarget(_pendingWidth, _pendingHeight);
-                Draw(frame);
+                long drawTicks;
+                using (var frame = _pool.TryGetNextFrame())
+                {
+                    if (frame is null)
+                        return;
+                    EnsureTarget(_pendingWidth, _pendingHeight);
+                    drawTicks = Draw(frame);
+                }
+
+                // The capture buffer is back in the pool before Present. This swap chain
+                // is compositional, so DWM does the vsync and Present(1) would only stall.
+                // Present(0) can return WAS_STILL_DRAWING; dropping that one frame is fine.
+                if (!TryPresent())
+                    _droppedPresents++;
+                else
+                    NotePace(drawTicks);
                 if (!_signaled)
                 {
                     _signaled = true;
@@ -252,20 +274,19 @@ public sealed class ChromaPresenter : IDisposable
         }
     }
 
-    void Draw(Direct3D11CaptureFrame frame)
+    long Draw(Direct3D11CaptureFrame frame)
     {
         var access = frame.Surface.As<IDirect3DDxgiInterfaceAccess>();
         var iid = TextureIid;
         var texturePtr = access.GetInterface(ref iid);
         using var texture = new ID3D11Texture2D(texturePtr);
-        using var surface = texture.QueryInterface<IDXGISurface>();
-        using var source = _d2dContext!.CreateBitmapFromDxgiSurface(surface, new BitmapProperties1(
-            new D2DPixelFormat(Format.B8G8R8A8_UNorm, D2DAlpha.Ignore)));
+        var source = CopyFrame(texture);
         var content = frame.ContentSize;
         var crop = MapPage(_cropX, _cropY, _cropWidth, _cropHeight, _cropWindowWidth, _cropWindowHeight, content.Width, content.Height);
         var scaleX = crop.Width > 0 ? _width / crop.Width : 1f;
         var scaleY = crop.Height > 0 ? _height / crop.Height : 1f;
-        _d2dContext.BeginDraw();
+        var started = Stopwatch.GetTimestamp();
+        _d2dContext!.BeginDraw();
         _d2dContext.Transform = Matrix3x2.Identity;
         _d2dContext.Clear(new Color4(0, 0, 0, 0));
         _d2dContext.Transform = Matrix3x2.CreateScale(scaleX, scaleY);
@@ -275,11 +296,106 @@ public sealed class ChromaPresenter : IDisposable
             keyed,
             Vector2.Zero,
             new Vortice.RawRectF(crop.X, crop.Y, crop.X + crop.Width, crop.Y + crop.Height),
-            Vortice.Direct2D1.InterpolationMode.Linear,
+            ScaleIsIdentity(scaleX, scaleY)
+                ? Vortice.Direct2D1.InterpolationMode.NearestNeighbor
+                : Vortice.Direct2D1.InterpolationMode.Linear,
             Vortice.Direct2D1.CompositeMode.SourceOver);
         _d2dContext.EndDraw();
-        _swapChain!.Present(1, PresentFlags.None);
-        _dcomp!.Commit();
+        return Stopwatch.GetTimestamp() - started;
+    }
+
+    /// <summary>1:1 capture needs no filtering. Anything else still blends.</summary>
+    public static bool ScaleIsIdentity(float scaleX, float scaleY) =>
+        Math.Abs(scaleX - 1f) < 0.001f && Math.Abs(scaleY - 1f) < 0.001f;
+
+    /// <summary>
+    /// Copy the capture texture onto one of two owned textures and draw that.
+    /// A Direct2D bitmap kept on the capture texture itself holds the pool buffer,
+    /// and after a few frames Windows Graphics Capture stops delivering.
+    /// </summary>
+    ID2D1Bitmap1 CopyFrame(ID3D11Texture2D source)
+    {
+        var desc = source.Description;
+        desc.BindFlags = BindFlags.ShaderResource;
+        desc.MiscFlags = ResourceOptionFlags.None;
+        desc.Usage = ResourceUsage.Default;
+        desc.CPUAccessFlags = CpuAccessFlags.None;
+        var slot = _copySlot;
+        _copySlot ^= 1;
+        var existing = _copies[slot];
+        if (existing is null
+            || existing.Description.Width != desc.Width
+            || existing.Description.Height != desc.Height
+            || existing.Description.Format != desc.Format)
+        {
+            _copyBitmaps[slot]?.Dispose();
+            existing?.Dispose();
+            var created = _device!.CreateTexture2D(desc);
+            _copies[slot] = created;
+            using var surface = created.QueryInterface<IDXGISurface>();
+            _copyBitmaps[slot] = _d2dContext!.CreateBitmapFromDxgiSurface(surface, new BitmapProperties1(
+                new D2DPixelFormat(Format.B8G8R8A8_UNorm, D2DAlpha.Ignore)));
+        }
+
+        var copy = _copies[slot] ?? throw new InvalidOperationException("Brak kopii klatki.");
+        var bitmap = _copyBitmaps[slot] ?? throw new InvalidOperationException("Brak bitmapy klatki.");
+        _context!.CopyResource(copy, source);
+        return bitmap;
+    }
+
+    void ClearCopies()
+    {
+        for (var i = 0; i < _copies.Length; i++)
+        {
+            _copyBitmaps[i]?.Dispose();
+            _copies[i]?.Dispose();
+            _copyBitmaps[i] = null;
+            _copies[i] = null;
+        }
+    }
+
+    bool TryPresent()
+    {
+        try
+        {
+            _swapChain!.Present(0, PresentFlags.None);
+            _dcomp!.Commit();
+            return true;
+        }
+        catch (Exception ex) when (IsStillDrawing(ex))
+        {
+            return false;
+        }
+    }
+
+    static bool IsStillDrawing(Exception ex)
+    {
+        var text = ex.ToString();
+        return text.Contains("887A000A", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("WAS_STILL_DRAWING", StringComparison.OrdinalIgnoreCase);
+    }
+
+    void NotePace(long drawTicks)
+    {
+        _presented++;
+        _drawTicks += drawTicks;
+        var now = Stopwatch.GetTimestamp();
+        if (_statStamp == 0)
+            _statStamp = now;
+        var span = now - _statStamp;
+        if (span < Stopwatch.Frequency * 5)
+            return;
+        var seconds = span / (double)Stopwatch.Frequency;
+        var fps = _presented / seconds;
+        var drawMs = _drawTicks / (double)Stopwatch.Frequency * 1000.0 / _presented;
+        var dropped = _droppedPresents;
+        _presented = 0;
+        _drawTicks = 0;
+        _droppedPresents = 0;
+        _statStamp = now;
+        _log("chroma pace fps=" + fps.ToString("0.0", CultureInfo.InvariantCulture)
+            + " draw=" + drawMs.ToString("0.00", CultureInfo.InvariantCulture) + "ms"
+            + " dropped=" + dropped.ToString(CultureInfo.InvariantCulture));
     }
 
     void EnsureTarget(int width, int height)
@@ -289,6 +405,7 @@ public sealed class ChromaPresenter : IDisposable
         _d2dContext!.Target = null;
         _target?.Dispose();
         _target = null;
+        ClearCopies();
         _swapChain!.ResizeBuffers(0, (uint)width, (uint)height, Format.Unknown, SwapChainFlags.None);
         using var buffer = _swapChain.GetBuffer<IDXGISurface>(0);
         _target = _d2dContext.CreateBitmapFromDxgiSurface(buffer, new BitmapProperties1(
@@ -349,7 +466,7 @@ public sealed class ChromaPresenter : IDisposable
         _d2dContext.BeginDraw();
         _d2dContext.Clear(new Color4(0, 0, 0, 0));
         _d2dContext.EndDraw();
-        _swapChain.Present(1, PresentFlags.None);
+        _swapChain.Present(0, PresentFlags.None);
         _dcomp.Commit();
     }
 

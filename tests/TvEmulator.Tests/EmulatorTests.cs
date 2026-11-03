@@ -163,9 +163,7 @@ public class EmulatorTests
             Assert.Empty(profile.Quirks.StripCss);
         });
 
-        var tizen2018 = Assert.Single(profiles, profile => profile.Id == "tizen-2018");
-        Assert.Contains("Proxy", tizen2018.Quirks.DeleteGlobals);
-        Assert.All(profiles.Where(profile => profile.Id != "tizen-2018"), profile => Assert.Empty(profile.Quirks.DeleteGlobals));
+        Assert.All(profiles, profile => Assert.Empty(profile.Quirks.DeleteGlobals));
 
         var engines = Catalog.LoadEngines(root);
         Assert.Equal(13, engines.Count);
@@ -253,6 +251,8 @@ public class EmulatorTests
         Assert.Contains("--no-sandbox", gpu63);
         Assert.DoesNotContain("--disable-gpu", gpu63);
         Assert.Contains("--use-angle=d3d11", gpu63);
+        Assert.Contains("--force-color-profile=srgb", gpu63);
+        Assert.DoesNotContain("--force-color-profile=srgb", args);
         Assert.Contains("--ignore-gpu-blacklist", gpu63);
         Assert.Contains("--disable-background-timer-throttling", gpu63);
         Assert.Contains("--disable-renderer-backgrounding", gpu63);
@@ -278,8 +278,11 @@ public class EmulatorTests
             @"C:\data dir",
             gpuChroma: true);
         Assert.Contains("--ignore-gpu-blocklist", gpu88);
+        Assert.Contains("--force-color-profile=srgb", gpu88);
         Assert.Contains("--disable-features=CalculateNativeWinOcclusion", gpu88);
         Assert.DoesNotContain("--disable-gpu", gpu88);
+        Assert.True(ChromaPresenter.ScaleIsIdentity(1f, 1f));
+        Assert.False(ChromaPresenter.ScaleIsIdentity(1.01f, 1f));
         var crop = ChromaPresenter.MapPage(8, 75, 1920, 1080, 1936, 1163, 1936, 1163);
         Assert.Equal(8f, crop.X);
         Assert.Equal(75f, crop.Y);
