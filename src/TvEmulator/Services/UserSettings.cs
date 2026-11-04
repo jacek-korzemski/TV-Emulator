@@ -20,10 +20,7 @@ public sealed class ProfileBudget
 
 public static class UserSettingsStore
 {
-    public static string FilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "TvEmulator",
-        "settings.json");
+    public static string FilePath => Path.Combine(RepoPaths.DataRoot(), "settings.json");
 
     public static UserSettings Load() => Load(FilePath);
 

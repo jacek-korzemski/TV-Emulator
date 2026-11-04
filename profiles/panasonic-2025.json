@@ -1,6 +1,6 @@
 {
   "id": "panasonic-2025",
-  "label": "Panasonic Fire TV (2025)",
+  "label": "Fire TV (2025)",
   "platform": "firetv",
   "engine": "chrome-122",
   "player": "edge",

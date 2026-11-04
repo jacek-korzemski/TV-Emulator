@@ -3,5 +3,20 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
   <Application.Resources>
+    <Style TargetType="ToolTip">
+      <Setter Property="Background" Value="#262A31"/>
+      <Setter Property="Foreground" Value="#F3F1EA"/>
+      <Setter Property="BorderBrush" Value="#343842"/>
+      <Setter Property="Padding" Value="10,8"/>
+      <Setter Property="MaxWidth" Value="360"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="ContentTemplate">
+        <Setter.Value>
+          <DataTemplate>
+            <TextBlock Text="{Binding}" TextWrapping="Wrap" MaxWidth="340"/>
+          </DataTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
   </Application.Resources>
 </Application>

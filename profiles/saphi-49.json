@@ -1,6 +1,6 @@
 {
   "id": "saphi-49",
-  "label": "Philips NetTV / early Saphi (Chromium 49)",
+  "label": "NetTV / early Saphi (Chromium 49)",
   "platform": "saphi",
   "engine": "chromium-49",
   "player": "edge",

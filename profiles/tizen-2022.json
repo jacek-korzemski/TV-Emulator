@@ -1,6 +1,6 @@
 {
   "id": "tizen-2022",
-  "label": "Samsung Tizen 6.5 (2022)",
+  "label": "Tizen 6.5 (2022)",
   "platform": "tizen",
   "engine": "chromium-85",
   "player": "avplay",

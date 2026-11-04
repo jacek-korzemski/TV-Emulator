@@ -211,11 +211,8 @@ public partial class MainWindow : Window
                 ?? throw new InvalidOperationException("Brak pliku silnika dla " + engine.Id + ". Uruchom tools/fetch-engines.ps1.");
 
             _stage = ViewportFit.Fit16By9(monitor.Screen.Bounds, profile.Viewport.Width, profile.Viewport.Height);
-            var userData = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "TvEmulator",
-                "userdata",
-                engine.Id);
+            var dataRoot = RepoPaths.DataRoot();
+            var userData = Path.Combine(dataRoot, "userdata", engine.Id);
             Directory.CreateDirectory(userData);
             if (string.Equals(engine.Kind, "firefox", StringComparison.Ordinal))
                 FirefoxProfile.Prepare(userData, profile.UserAgent);
@@ -245,7 +242,7 @@ public partial class MainWindow : Window
                 _plane = new VideoPlane(
                     Dispatcher,
                     _server.Avplay,
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TvEmulator", "userdata", "videoplane"),
+                    Path.Combine(dataRoot, "userdata", "videoplane"),
                     "http://127.0.0.1:" + _server.Port + "/__emulator/videoplane.html",
                     _stage,
                     profile.Viewport,
@@ -657,7 +654,8 @@ public partial class MainWindow : Window
     {
         var engine = engines.FirstOrDefault(item => item.Id == profile.Engine);
         var chromium = engine is null ? profile.Engine : "Chromium " + engine.Milestone;
-        return string.IsNullOrWhiteSpace(profile.Player) ? chromium : chromium + " · " + profile.Player;
+        var line = string.IsNullOrWhiteSpace(profile.Player) ? chromium : chromium + " · " + profile.Player;
+        return "tryb zgodności · " + line;
     }
 
     private sealed class ProfileChoice(TvProfile profile, string detail)
@@ -665,6 +663,9 @@ public partial class MainWindow : Window
         public TvProfile Profile { get; } = profile;
         public string Label => Profile.Label;
         public string Detail { get; } = detail;
+        public string Note =>
+            "Nieoficjalny profil do testowania aplikacji przeznaczonych dla: " + Label
+            + ". Bez powiązania, sponsorowania i autoryzacji właściciela znaku.";
     }
 
     private sealed class MonitorChoice(System.Windows.Forms.Screen screen, string label)

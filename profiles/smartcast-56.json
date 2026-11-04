@@ -1,6 +1,6 @@
 {
   "id": "smartcast-56",
-  "label": "Vizio SmartCast (Chromium 56)",
+  "label": "SmartCast (Chromium 56)",
   "platform": "smartcast",
   "engine": "chromium-56",
   "player": "edge",

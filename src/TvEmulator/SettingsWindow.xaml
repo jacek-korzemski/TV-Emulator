@@ -64,13 +64,16 @@
 
       <DockPanel Grid.Row="4">
         <TextBlock x:Name="ProfileCountText" DockPanel.Dock="Bottom" Margin="0,8,0,0" Foreground="#C8C4B8"/>
+        <TextBlock DockPanel.Dock="Bottom" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="#9A968C" FontSize="12"
+                   Text="Nieoficjalny tryb zgodności. Nazwa wskazuje tylko, do jakich aplikacji służy profil."/>
         <Border Background="#262A31" Padding="12,4">
           <ScrollViewer VerticalScrollBarVisibility="Auto">
             <ItemsControl x:Name="ProfileList">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <CheckBox IsChecked="{Binding Visible, Mode=TwoWay}" Margin="0,7" Foreground="#F3F1EA"
-                            Checked="ProfileToggled" Unchecked="ProfileToggled">
+                            Checked="ProfileToggled" Unchecked="ProfileToggled"
+                            ToolTip="{Binding Note}">
                     <StackPanel Margin="2,0,0,0">
                       <TextBlock Text="{Binding Label}"/>
                       <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="#6E6A60"/>

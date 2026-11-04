@@ -28,7 +28,7 @@
         "Each captured frame is copied and handed back to Windows at once. Holding it while drawing could stop new frames from arriving.",
         "A 1:1 picture is drawn without filtering, and the covered browser window is only pushed down when something has moved above it.",
         "The session log reports the GPU picture pace every few seconds: frames per second, draw time, and dropped frames.",
-        "Samsung Tizen 4.0 (2018) keeps the browser's own Proxy. An app that builds a Proxy no longer stops on the login screen.",
+        "Tizen 4.0 (2018) keeps the browser's own Proxy. An app that builds a Proxy no longer stops on the login screen.",
         "GPU sessions render in sRGB, so a monitor color profile cannot shift the key color and close the video hole."
       ]
     },
@@ -46,11 +46,11 @@
     },
     {
       "date": "2026-10-26",
-      "title": "Tizen 9, VIDAA 9, and Panasonic Fire TV",
+      "title": "Tizen 9, VIDAA 9, and Fire TV",
       "items": [
-        "Samsung Tizen 9.0 (2025) is in the profile list. The page runs on Chrome 120 and the picture still goes through avplay.",
-        "Hisense VIDAA 9 (2025) runs on Chromium 111, with the picture on the Edge plane. VIDAA profiles also answer chipset, OS version, resolution, HDR, Chromium version, and menu language.",
-        "Panasonic 2025 is Fire TV, not my Home Screen. The page runs in Chrome 122, the picture goes through Edge, and Back is keyCode 4. A page recognizes the set from the AmazonWebAppPlatform user agent."
+        "Tizen 9.0 (2025) is in the profile list. The page runs on Chrome 120 and the picture still goes through avplay.",
+        "VIDAA 9 (2025) runs on Chromium 111, with the picture on the Edge plane. VIDAA profiles also answer chipset, OS version, resolution, HDR, Chromium version, and menu language.",
+        "The 2025 profile is Fire TV, not my Home Screen. The page runs in Chrome 122, the picture goes through Edge, and Back is keyCode 4. A page recognizes the set from the AmazonWebAppPlatform user agent."
       ]
     },
     {
@@ -78,11 +78,11 @@
     },
     {
       "date": "2026-10-25",
-      "title": "Startup settings and Edge video for Titan and Panasonic",
+      "title": "Startup settings and Edge video for Titan OS and my Home Screen",
       "items": [
         "Ustawienia remembers a default app, a folder or an http(s) address, and fills it in at every start. Uncheck TV profiles you do not use and they leave the list; profiles added later stay visible until you hide them.",
-        "Titan OS and the 2016 Panasonic set play through the Edge picture under the page, because Chrome 122 and Firefox 44 have no Widevine CDM.",
-        "The Panasonic window hides the Firefox navigation bar, and hardware acceleration stays off so the video hole shows the Edge picture.",
+        "Titan OS and my Home Screen from 2016 play through the Edge picture under the page, because Chrome 122 and Firefox 44 have no Widevine CDM.",
+        "The 2016 window hides the Firefox navigation bar, and hardware acceleration stays off so the video hole shows the Edge picture.",
         "A clear stream starts without waiting for Widevine. A license request still opens the CDM, and the page reports Widevine variants as supported so they stay in the catalog.",
         "The HbbTV profile is labeled WIP, and video/broadcast objects include fallback content so the broadcast picture stays visible."
       ]
@@ -91,8 +91,8 @@
       "date": "2026-10-25",
       "title": "More TV profiles and a universal VOD sample",
       "items": [
-        "Profiles now cover Hisense VIDAA, Vizio SmartCast, Philips Saphi and Titan OS, HbbTV 1.5, Panasonic my Home Screen (Firefox 44), and Sony BRAVIA / Vewd, alongside the existing Tizen and webOS sets.",
-        "Each new profile pins its own engine and player path: Edge under the page for most Chromium sets, Chrome for Testing 122 playing in-page on Titan, and Firefox 44 for the 2016 Panasonic set.",
+        "Profiles now cover VIDAA, SmartCast, Saphi and Titan OS, HbbTV 1.5, my Home Screen (Firefox 44), and Vewd, alongside the existing Tizen and webOS profiles.",
+        "Each new profile pins its own engine and player path: Edge under the page for most Chromium sets, Chrome for Testing 122 playing in-page on Titan OS, and Firefox 44 for my Home Screen from 2016.",
         "samples/universal-vod is a remote VOD catalog that switches between AVPlay on Tizen and Shaka elsewhere, with clear, PlayReady, and Widevine DASH demos."
       ]
     },
@@ -110,8 +110,8 @@
       "title": "First public build",
       "items": [
         "Windows app that opens a Smart TV page in a 16:9 picture and takes a remote (keyboard or gamepad) instead of the mouse.",
-        "Samsung Tizen profiles from 2017 through 2022, each on the Chromium version close to that year’s TV, with video through an avplay-style plane.",
-        "An LG webOS 4 profile whose page stays on old Chromium while Edge handles Widevine and decoding.",
+        "Tizen profiles from 2017 through 2022, each on the Chromium version close to that year’s TV, with video through an avplay-style plane.",
+        "A webOS TV 4.x profile whose page stays on old Chromium while Edge handles Widevine and decoding.",
         "Sample pages for a Tizen key test, a Tizen video test, and a webOS hello page."
       ]
     }

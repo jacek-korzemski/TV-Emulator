@@ -90,7 +90,8 @@ public partial class SettingsWindow : Window
     {
         var engine = engines.FirstOrDefault(item => item.Id == profile.Engine);
         var name = engine is null ? profile.Engine : "Chromium " + engine.Milestone;
-        return string.IsNullOrWhiteSpace(profile.Player) ? name : name + " · " + profile.Player;
+        var line = string.IsNullOrWhiteSpace(profile.Player) ? name : name + " · " + profile.Player;
+        return "tryb zgodności · " + line;
     }
 
     private sealed class ProfileToggle(string id, string label, string detail, bool visible)
@@ -98,6 +99,9 @@ public partial class SettingsWindow : Window
         public string Id { get; } = id;
         public string Label { get; } = label;
         public string Detail { get; } = detail;
+        public string Note { get; } =
+            "Nieoficjalny profil do testowania aplikacji przeznaczonych dla: " + label
+            + ". Bez powiązania, sponsorowania i autoryzacji właściciela znaku.";
         public bool Visible { get; set; } = visible;
     }
 }

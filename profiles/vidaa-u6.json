@@ -1,6 +1,6 @@
 {
   "id": "vidaa-u6",
-  "label": "Hisense VIDAA U6 (Chromium 88)",
+  "label": "VIDAA U6 (Chromium 88)",
   "platform": "vidaa",
   "engine": "chromium-88",
   "player": "edge",

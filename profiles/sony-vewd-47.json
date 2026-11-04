@@ -1,6 +1,6 @@
 {
   "id": "sony-vewd-47",
-  "label": "Sony BRAVIA / Vewd (Chromium 47)",
+  "label": "Vewd (Chromium 47)",
   "platform": "sony",
   "engine": "chromium-47",
   "player": "edge",

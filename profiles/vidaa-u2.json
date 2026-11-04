@@ -1,6 +1,6 @@
 {
   "id": "vidaa-u2",
-  "label": "Hisense VIDAA U2-class (Chromium 74)",
+  "label": "VIDAA U2-class (Chromium 74)",
   "platform": "vidaa",
   "engine": "chromium-74",
   "player": "edge",

@@ -6,7 +6,7 @@ This app is vibe-coded. The author knew the behavior they wanted, understood the
 
 # TV Emulator
 
-A Windows program that opens a page the way a chosen Samsung Tizen or LG webOS television would. **Launch** fills a 16:9 picture. You drive it with a remote: keyboard or gamepad. The mouse is not how you use the page.
+A Windows program that opens a page the way a chosen Tizen or webOS television would. **Launch** fills a 16:9 picture. You drive it with a remote: keyboard or gamepad. The mouse is not how you use the page. Profile names are an unofficial compatibility label: they say which apps the profile is for.
 
 A short public overview lives at <https://jacek-korzemski.github.io/TV-Emulator/> after the landing page has been published once (see [Publish the landing page](#publish-the-landing-page)).
 
@@ -14,31 +14,31 @@ A short public overview lives at <https://jacek-korzemski.github.io/TV-Emulator/
 
 | Profile | Chromium | Picture |
 | --- | --- | --- |
-| Samsung Tizen 3.0 (2017) | 47 | avplay |
-| Samsung Tizen 4.0 (2018) | 56 | avplay |
-| Samsung Tizen 5.0 (2019) | 63 | avplay |
-| Samsung Tizen 6.5 (2022) | 85 | avplay |
-| Samsung Tizen 9.0 (2025) | Chrome 120 | avplay |
-| LG webOS TV 4.x (2018–2019) | 53 | edge |
-| Hisense VIDAA U2-class | 74 | edge |
-| Hisense VIDAA U6 | 88 | edge |
-| Hisense VIDAA 9 (2025) | 111 | edge |
-| Vizio SmartCast | 47, 56, 63 | edge |
-| Philips NetTV / early Saphi | 49 | edge |
-| Philips Saphi 2020–2022 | 84 | edge |
+| Tizen 3.0 (2017) | 47 | avplay |
+| Tizen 4.0 (2018) | 56 | avplay |
+| Tizen 5.0 (2019) | 63 | avplay |
+| Tizen 6.5 (2022) | 85 | avplay |
+| Tizen 9.0 (2025) | Chrome 120 | avplay |
+| webOS TV 4.x (2018–2019) | 53 | edge |
+| VIDAA U2-class | 74 | edge |
+| VIDAA U6 | 88 | edge |
+| VIDAA 9 (2025) | 111 | edge |
+| SmartCast | 47, 56, 63 | edge |
+| NetTV / early Saphi | 49 | edge |
+| Saphi 2020–2022 | 84 | edge |
 | Titan OS | Chrome 122 | edge |
 | HbbTV 1.5 | 53 | edge |
-| Panasonic my Home Screen (2016) | Firefox 44 | edge |
-| Panasonic Fire TV (2025) | Chrome 122 | edge |
-| Sony BRAVIA / Vewd | 47 | edge |
+| my Home Screen (2016) | Firefox 44 | edge |
+| Fire TV (2025) | Chrome 122 | edge |
+| Vewd | 47 | edge |
 
-The page runs in that pinned browser, with a shim for the set (`tizen`, `webapis`, `webOS`, VIDAA `Hisense_Get*`, `VIZIO`, Philips `DeviceInfo`, HbbTV `video/broadcast`, `Panasonic`, `Sony`, or a Fire TV user agent) plus the remote key codes.
+The page runs in that pinned browser, with a shim for that profile's device API (`tizen`, `webapis`, `webOS`, and the other profile globals) plus the remote key codes.
 
-`edge` means the picture is the WebView2 plane under the page. `page` means the page's own engine plays it. Titan still runs the page in Chrome for Testing 122, but that build has no Widevine CDM, so the picture goes through the Edge plane like the older Chromium sets. Public Chromium snapshots still have no H.264 and no Widevine, so VIDAA U6 and VIDAA 9 stay on `edge` even though those generations' Chrome is newer. Tizen 9.0 is Chrome 120 and still plays through avplay. Panasonic Fire TV (2025) runs the page in the same Chrome 122 as Titan, recognizes the set from an `AmazonWebAppPlatform` user agent, and uses Back as keyCode 4. Its picture stays on the Edge plane. Panasonic my Home Screen from 2016 is Firefox 44 (Firefox OS 2.5). That build has no Widevine CDM, so the picture uses the Edge plane. It also has no Chrome DevTools Protocol, so the live console, network, and memory tabs stay empty; the session log still works. Sony is Chromium 47 with an OMI user agent. The Vewd TV binary is not public.
+`edge` means the picture is the WebView2 plane under the page. `page` means the page's own engine plays it. Titan OS still runs the page in Chrome for Testing 122, but that build has no Widevine CDM, so the picture goes through the Edge plane like the older Chromium sets. Public Chromium snapshots still have no H.264 and no Widevine, so VIDAA U6 and VIDAA 9 stay on `edge` even though those generations' Chrome is newer. Tizen 9.0 is Chrome 120 and still plays through avplay. Fire TV (2025) runs the page in the same Chrome 122 as Titan OS, recognizes the set from an `AmazonWebAppPlatform` user agent, and uses Back as keyCode 4. Its picture stays on the Edge plane. my Home Screen from 2016 is Firefox 44 (Firefox OS 2.5). That build has no Widevine CDM, so the picture uses the Edge plane. It also has no Chrome DevTools Protocol, so the live console, network, and memory tabs stay empty; the session log still works. Vewd is Chromium 47 with an OMI user agent. The Vewd TV binary is not public.
 
 Video does not play inside that old Chromium. Those builds lack the codecs and DRM a TV app expects.
 
-- **Tizen is Chromium plus avplay.** `webapis.avplay` is the native Samsung player. Calls are forwarded to a WebView2 window (current Edge) behind the page. Edge has H.264, AAC, and PlayReady, so the video plane can play a clear or PlayReady DASH stream. The page punches a key color and the video shows through, the same idea as a TV video layer under the HTML.
+- **Tizen is Chromium plus avplay.** `webapis.avplay` is the native player on Tizen. Calls are forwarded to a WebView2 window (current Edge) behind the page. Edge has H.264, AAC, and PlayReady, so the video plane can play a clear or PlayReady DASH stream. The page punches a key color and the video shows through, the same idea as a TV video layer under the HTML.
 - **webOS is Chromium plus Edge.** webOS 4 plays in the HTML engine with Widevine, not avplay. Chromium 53 has no Widevine CDM and no H.264. The page still picks variants and downloads segments. Edge owns the Widevine session and the decoder. The video element in the old page is only a clock. PlayReady is the Tizen path and is not used here.
 
 Processor and memory caps are optional and stored on this PC. The profile files leave them empty. **Moc telewizora**, under the profile list, applies a cap to the browser process only. The video plane is not capped.
@@ -82,16 +82,32 @@ dotnet run --project src\TvEmulator\TvEmulator.csproj
 
 The first build takes a moment. Then the **TV Emulator** window opens.
 
-Leave the program in this folder. It looks for `TvEmulator.sln` beside itself. A lone `TvEmulator.exe` copied to the desktop will not start correctly.
+Leave the program in this folder. It looks for `TvEmulator.sln` above the executable. A lone `TvEmulator.exe` copied out of this folder will not start. A USB stick uses the portable folder below, which does not need the solution file.
 
 Next time: open PowerShell in the same folder and run only `dotnet run`.
+
+## Portable folder
+
+Build this on a PC that already has the .NET 8 SDK. Download the browsers first (`tools\fetch-engines.ps1`), then:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\publish-portable.ps1
+```
+
+The script writes `dist\TvEmulator-portable\`. Copy that whole folder to the USB stick and start `TvEmulator.exe`. The stick does not need the .NET SDK. The computer you plug it into still needs the [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) for the video picture. Windows 11 already has it. Most Windows 10 PCs with Edge do too.
+
+`TvEmulator.exe` by itself is not enough. The folder next to it has to contain `profiles`, `shims`, `debug-ui`, `samples`, and `engines` (including the unpacked browsers). The first launch unpacks a few native libraries into the computer's temporary folder. The browsers stay in `engines\`.
+
+`-SkipEngines` leaves the browsers out of the copy. The package then only has `engines\builds.json`. Run `fetch-engines.ps1` on the build PC and publish again, or copy the `chromium-*`, `chrome-*`, and `firefox-*` folders into `engines\` yourself.
+
+Settings and browser profiles for this package are stored in `data\` beside the exe. `dotnet run` from the repository still uses `%LOCALAPPDATA%\TvEmulator`. Chromium's profile on the stick is slower than on an internal disk. That is the cost of not leaving it on the host PC.
 
 ## Settings window
 
 - **TV profile.** The name and year are on the first line. Under that: the Chromium version and the playback method, `avplay` on Tizen, `edge` on webOS.
 - **App.** A folder that contains `index.html`, or an address starting with `http://` or `https://`. **Browse** picks a folder.
 - **Monitor.** The screen for the 16:9 picture. With two monitors, pick the one you are looking at.
-- **Settings (Ustawienia).** Saves a default app, a folder or an `http(s)` address, and fills it in at every start. Uncheck TV profiles you do not use and they leave the profile list. New profiles stay visible until you hide them. Both live in `%LOCALAPPDATA%\TvEmulator\settings.json`. Leave at least one profile visible.
+- **Settings (Ustawienia).** Saves a default app, a folder or an `http(s)` address, and fills it in at every start. Uncheck TV profiles you do not use and they leave the profile list. New profiles stay visible until you hide them. Both live in `%LOCALAPPDATA%\TvEmulator\settings.json` when you start from this repository, and in `data\settings.json` beside `TvEmulator.exe` in the portable folder. Leave at least one profile visible.
 - **Magic remote pointer.** When checked, the cursor is visible.
 - **Diagnostic log.** On at startup. The program writes `logs\session-….log`. After a failure, the bar at the bottom of the window shows that path.
 
@@ -165,11 +181,11 @@ The session diagnostic lines, the same stream that lands in `logs\session-….lo
 
 **The download stopped halfway.** Run the script again. `READY` means that engine is already present and will not be downloaded twice. Wait for `FETCH_DONE`.
 
-**The bottom of the window says the engine file for `chromium-…` is missing.** The download script never reached `FETCH_DONE`. Run it again from the folder that contains `TvEmulator.sln`.
+**The bottom of the window says the engine file for `chromium-…` is missing.** The download script never reached `FETCH_DONE`. Run it again from the folder that contains `TvEmulator.sln`. On a USB stick, that browser folder has to be inside `engines` next to `TvEmulator.exe`.
 
 **Windows or antivirus blocks `chrome.exe`.** Allow it. These are official old Chromium builds chosen to match the televisions, not a TV installer.
 
-**`TvEmulator.sln` was not found.** The program was started outside the project folder. Go back and use `dotnet run` as above.
+**`TvEmulator.sln` was not found, or the portable folder is incomplete.** The program was started outside the project folder, or `profiles` and `engines\builds.json` are not beside the exe. Go back and use `dotnet run` as above, or copy the whole `TvEmulator-portable` folder.
 
 **It asks for a folder with `index.html` or an http(s) address.** The chosen folder has no `index.html`, or the address does not start with `http://` or `https://`.
 
@@ -179,7 +195,7 @@ The session diagnostic lines, the same stream that lands in `logs\session-….lo
 
 **Chromium failed to start, or there is no free localhost port.** A previous session is still running. Return to it with **Ctrl+Shift+Q**, or close the program window and try again.
 
-**You want to sign in again.** Close the program, then delete `%LOCALAPPDATA%\TvEmulator\userdata`. You can paste `%LOCALAPPDATA%\TvEmulator` into the Explorer address bar. The default app and hidden profiles are in `settings.json` beside that folder. Deleting only `userdata` leaves them in place.
+**You want to sign in again.** Close the program, then delete the browser profile folder. From `dotnet run` that is `%LOCALAPPDATA%\TvEmulator\userdata`. You can paste `%LOCALAPPDATA%\TvEmulator` into the Explorer address bar. From the portable folder it is `data\userdata` next to `TvEmulator.exe`. The default app and hidden profiles are in `settings.json` beside that `userdata` folder. Deleting only `userdata` leaves them in place.
 
 ## Publish the landing page
 
@@ -198,3 +214,7 @@ Landing-page notes live in `docs/changelog.json`. In Cursor, `/update-changelog`
 ## Tests
 
 From the project folder: `dotnet test`.
+
+## Znaki towarowe
+
+Nazwy systemów są znakami ich właścicieli i występują wyłącznie informacyjnie, żeby wskazać przeznaczenie profilu. Tizen jest znakiem towarowym Linux Foundation. TV Emulator jest niezależnym, nieoficjalnym narzędziem. Nie jest powiązany, sponsorowany ani autoryzowany przez właścicieli tych znaków.

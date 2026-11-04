@@ -56,7 +56,7 @@ var VodCatalog = (function () {
       return "";
     }
     if (item && item.drm === "playready") {
-      return "PlayReady odtwarza AVPlay na Tizenie. Ten odbiornik używa Widevine.";
+      return "PlayReady odtwarza AVPlay na profilach Tizen. Ten odbiornik używa Widevine.";
     }
     if (item && item.drm === "widevine") {
       return "Widevine odtwarza Shaka w elemencie video. Ten odbiornik używa PlayReady.";

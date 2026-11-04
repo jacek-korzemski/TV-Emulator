@@ -1,6 +1,6 @@
 {
   "id": "tizen-2019",
-  "label": "Samsung Tizen 5.0 (2019)",
+  "label": "Tizen 5.0 (2019)",
   "platform": "tizen",
   "engine": "chromium-63",
   "player": "avplay",

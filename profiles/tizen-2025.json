@@ -1,6 +1,6 @@
 {
   "id": "tizen-2025",
-  "label": "Samsung Tizen 9.0 (2025)",
+  "label": "Tizen 9.0 (2025)",
   "platform": "tizen",
   "engine": "chrome-120",
   "player": "avplay",

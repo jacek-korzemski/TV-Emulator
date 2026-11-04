@@ -1,6 +1,6 @@
 {
   "id": "saphi-84",
-  "label": "Philips Saphi 2020–2022 (Chromium 84)",
+  "label": "Saphi 2020–2022 (Chromium 84)",
   "platform": "saphi",
   "engine": "chromium-84",
   "player": "edge",

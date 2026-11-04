@@ -44,16 +44,19 @@
       <StackPanel Grid.Row="2" Margin="0,0,0,14">
         <TextBlock Text="Profil telewizora" Margin="0,0,0,6"/>
         <ComboBox x:Name="ProfileBox" SelectionChanged="ProfileChanged" Padding="8,4" MinHeight="52"
-                  VerticalContentAlignment="Center">
+                  VerticalContentAlignment="Center"
+                  ToolTip="{Binding SelectedItem.Note, RelativeSource={RelativeSource Self}}">
           <ComboBox.ItemTemplate>
             <DataTemplate>
-              <StackPanel Margin="0,1">
+              <StackPanel Margin="0,1" ToolTip="{Binding Note}">
                 <TextBlock Text="{Binding Label}"/>
                 <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="#6E6A60"/>
               </StackPanel>
             </DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
+        <TextBlock TextWrapping="Wrap" Foreground="#9A968C" FontSize="12" Margin="0,8,0,0"
+                   Text="Nieoficjalny tryb zgodności. Nazwa wskazuje tylko, do jakich aplikacji służy profil."/>
         <Button x:Name="BudgetButton" Content="Moc telewizora" HorizontalAlignment="Left" Margin="0,8,0,0"
                 Padding="14,6" Click="BudgetClick" Background="#343842" Foreground="#F3F1EA" BorderThickness="0" Cursor="Hand"/>
       </StackPanel>

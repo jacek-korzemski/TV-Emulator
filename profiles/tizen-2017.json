@@ -1,6 +1,6 @@
 {
   "id": "tizen-2017",
-  "label": "Samsung Tizen 3.0 (2017)",
+  "label": "Tizen 3.0 (2017)",
   "platform": "tizen",
   "engine": "chromium-47",
   "player": "avplay",
