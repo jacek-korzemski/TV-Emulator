@@ -279,20 +279,6 @@ code {
 }
 .feature-list dd { margin: 0.3rem 0 0; color: var(--muted); }
 
-#screenshots figure { margin: 2.25rem 0 0; }
-#screenshots img {
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 0.9rem;
-  background: #0e1116;
-}
-#screenshots figcaption {
-  margin-top: 0.7rem;
-  color: var(--muted);
-  max-width: 44rem;
-}
-#screenshots figcaption strong { color: var(--ink); font-weight: 600; }
-
 #changelog-list {
   list-style: none;
   padding: 0;
