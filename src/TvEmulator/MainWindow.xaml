@@ -34,6 +34,8 @@
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
         <RowDefinition Height="*"/>
       </Grid.RowDefinitions>
 
@@ -61,7 +63,15 @@
                 Padding="14,6" Click="BudgetClick" Background="#343842" Foreground="#F3F1EA" BorderThickness="0" Cursor="Hand"/>
       </StackPanel>
 
-      <StackPanel Grid.Row="3" Margin="0,0,0,14">
+      <StackPanel Grid.Row="3" Margin="0,0,0,8">
+        <CheckBox x:Name="CompareBox" Content="Włącz tryb porównywania" Foreground="#F3F1EA"
+                  Checked="CompareBoxChanged" Unchecked="CompareBoxChanged"/>
+        <TextBlock x:Name="CompareHint" Visibility="Collapsed" Margin="0,6,0,0" TextWrapping="Wrap"
+                   Foreground="#9A968C"
+                   Text="F8 wraca do pierwszej aplikacji, F9 przechodzi do drugiej. Adres strony zostaje."/>
+      </StackPanel>
+
+      <StackPanel Grid.Row="4" Margin="0,0,0,14">
         <TextBlock Text="Aplikacja — katalog z index.html albo adres https://" Margin="0,0,0,6"/>
         <DockPanel>
           <Button DockPanel.Dock="Right" Content="Przeglądaj" Margin="8,0,0,0" Padding="14,6"
@@ -70,12 +80,21 @@
         </DockPanel>
       </StackPanel>
 
-      <StackPanel Grid.Row="4" Margin="0,0,0,14">
+      <StackPanel x:Name="CompareAppBPanel" Grid.Row="5" Margin="0,0,0,14" Visibility="Collapsed">
+        <TextBlock Text="Aplikacja druga — katalog z index.html albo adres https://" Margin="0,0,0,6"/>
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="Przeglądaj" Margin="8,0,0,0" Padding="14,6"
+                  Click="BrowseBClick" Background="#343842" Foreground="#F3F1EA" BorderThickness="0"/>
+          <TextBox x:Name="DirectoryBoxB" Padding="8,6" CaretBrush="#F3F1EA" Background="#262A31" Foreground="#F3F1EA" BorderThickness="0"/>
+        </DockPanel>
+      </StackPanel>
+
+      <StackPanel Grid.Row="6" Margin="0,0,0,14">
         <TextBlock Text="Monitor" Margin="0,0,0,6"/>
         <ComboBox x:Name="MonitorBox" Padding="8,6"/>
       </StackPanel>
 
-      <StackPanel Grid.Row="5" Margin="0,4,0,16">
+      <StackPanel Grid.Row="7" Margin="0,4,0,16">
         <CheckBox x:Name="PointerBox" Content="Wskaźnik magic remote (kursor widoczny)" Foreground="#F3F1EA"/>
         <CheckBox x:Name="DebugBox" IsChecked="True" Margin="0,8,0,0"
                   Content="Zapis diagnostyczny do logs/session-….log" Foreground="#F3F1EA"/>
@@ -83,7 +102,7 @@
                    LineHeight="20" Text="Podgląd na żywo startuje…"/>
       </StackPanel>
 
-      <StackPanel Grid.Row="6">
+      <StackPanel Grid.Row="8">
         <TextBlock x:Name="LimitsText" TextWrapping="Wrap" Foreground="#C8C4B8" Margin="0,0,0,16"/>
         <TextBlock TextWrapping="Wrap" Foreground="#9A968C" LineHeight="22">
           Strzałki i Enter zostają. Esc to Back. F1–F4 to kolory.

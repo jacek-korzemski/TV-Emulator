@@ -335,6 +335,8 @@ canvas {
   gap: 12px;
 }
 
+.compare-routes { margin-top: 12px; }
+
 table {
   width: 100%;
   border-collapse: collapse;

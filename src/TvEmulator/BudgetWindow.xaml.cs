@@ -94,7 +94,9 @@ public partial class BudgetWindow : Window
             DefaultApp = _source.DefaultApp,
             HiddenProfiles = _source.HiddenProfiles?.ToList() ?? new List<string>(),
             CpuClockGhz = clock,
-            Budgets = budgets
+            Budgets = budgets,
+            CompareMode = _source.CompareMode,
+            CompareAppB = _source.CompareAppB ?? ""
         };
         DialogResult = true;
     }

@@ -11,3 +11,4 @@ engines/firefox-*/
 engines/electron-*/
 engines/downloads/
 engines/spike-results.json
+samples/tv-apps/

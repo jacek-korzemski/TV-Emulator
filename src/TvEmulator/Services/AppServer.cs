@@ -105,6 +105,14 @@ public sealed class AppServer : IDisposable
     private Uri? _origin;
     private Uri? _page;
     private JsonNode? _remoteAppInfo;
+    // Tryb porównywania: lista źródeł i etykiet (równoległa), aktywny indeks oraz
+    // jednorazowy komunikat snackbara. W trybie jednoźródłowym lista ma jeden wpis.
+    private List<AppSource> _sources = new();
+    private List<string> _labels = new();
+    private int _activeIndex;
+    private string _pendingNotice = "";
+    private string _shelfDirectory = "";
+    private readonly object _compareGate = new();
     private TvProfile? _profile;
     private bool _pointerEnabled;
     private bool _debug;
@@ -148,16 +156,121 @@ public sealed class AppServer : IDisposable
     public event Action? ExitRequested;
     public event Action<string>? Log;
     public event Action<string>? DebugReported;
+    public event Action<string>? CompareTrace;
+    public event Action<int>? CompareSwitched;
 
     public void Start(string root, string appDirectory, TvProfile profile, bool pointerEnabled, bool debug = false, string videoComposition = "colorKey") =>
-        Start(root, new AppSource(Path.GetFullPath(appDirectory), null), profile, pointerEnabled, debug, videoComposition);
+        Start(root, new AppSource(Path.GetFullPath(appDirectory), null), appDirectory, profile, pointerEnabled, debug, videoComposition);
 
-    public void Start(string root, AppSource source, TvProfile profile, bool pointerEnabled, bool debug = false, string videoComposition = "colorKey")
+    public void Start(string root, AppSource source, TvProfile profile, bool pointerEnabled, bool debug = false, string videoComposition = "colorKey") =>
+        Start(root, source, LabelFrom(source), profile, pointerEnabled, debug, videoComposition);
+
+    /// <summary>
+    /// Startuje sesję w trybie porównywania dwóch aplikacji. Źródło A staje się aktywne;
+    /// przełączenie na B odbywa się przez <see cref="SwitchSource"/> (zwykle z endpointu
+    /// <c>/__emulator/compare</c>). Etykiety to surowy tekst wpisany przez użytkownika —
+    /// trafiają do snackbara po przełączeniu.
+    /// </summary>
+    public void StartCompare(
+        string root,
+        AppSource a,
+        AppSource b,
+        string labelA,
+        string labelB,
+        TvProfile profile,
+        bool pointerEnabled,
+        bool debug = false,
+        string videoComposition = "colorKey")
+    {
+        _sources = new List<AppSource> { a, b };
+        _labels = new List<string> { labelA, labelB };
+        _activeIndex = 0;
+        _pendingNotice = "";
+        _shelfDirectory = "";
+        ApplySource(a);
+        StartCore(root, profile, pointerEnabled, debug, videoComposition);
+    }
+
+    /// <summary>
+    /// Przełącza aktywne źródło serwowane przez serwer. No-op, gdy indeks jest poza
+    /// zakresem lub wskazuje już aktywne źródło. Czyści <c>_remoteAppInfo</c>, by zdalne
+    /// origin nowo aktywnego źródła od nowa pobrało appinfo. Nie modyfikuje
+    /// <c>_pendingNotice</c> — to ustawia endpoint porównawczy.
+    /// </summary>
+    public void SwitchSource(int index)
+    {
+        if (index < 0 || index >= _sources.Count)
+            return;
+        if (index == _activeIndex)
+            return;
+        _activeIndex = index;
+        ApplySource(_sources[index]);
+        _remoteAppInfo = null;
+    }
+
+    private static string LabelFrom(AppSource source) =>
+        source.Directory ?? source.Page?.ToString() ?? "";
+
+    /// <summary>
+    /// Otwiera stronę z półki albo wraca do zapamiętanego katalogu.
+    /// Adres jest przyjmowany tylko z lokalnej sesji i tylko dla hosta wypisanego
+    /// w catalog.js tej półki. Powrót działa także wtedy, gdy aktywne jest obce origin.
+    /// </summary>
+    private JsonObject OpenShelf(string? url, bool restore)
+    {
+        lock (_compareGate)
+        {
+            if (restore)
+            {
+                if (_shelfDirectory.Length == 0 || _sources.Count >= 2)
+                    return new JsonObject { ["ok"] = false };
+
+                var shelf = new AppSource(_shelfDirectory, null);
+                _sources = new List<AppSource> { shelf };
+                _labels = new List<string> { _shelfDirectory };
+                _activeIndex = 0;
+                _pendingNotice = "";
+                ApplySource(shelf);
+                _remoteAppInfo = null;
+                return new JsonObject { ["ok"] = true, ["path"] = "/" };
+            }
+
+            if (_sources.Count >= 2 || _origin is not null || _appDirectory.Length == 0)
+                return new JsonObject { ["ok"] = false };
+            var allowed = TvAppShelf.ReadHosts(_appDirectory);
+            if (!TvAppShelf.TryParseLaunchUrl(url, allowed, out var page))
+                return new JsonObject { ["ok"] = false };
+
+            _shelfDirectory = _appDirectory;
+            var remote = new AppSource(null, page);
+            _sources = new List<AppSource> { remote };
+            _labels = new List<string> { page.AbsoluteUri };
+            _activeIndex = 0;
+            _pendingNotice = "";
+            ApplySource(remote);
+            _remoteAppInfo = null;
+            return new JsonObject
+            {
+                ["ok"] = true,
+                ["path"] = NormalizeStartPath(remote.LocalStartPath)
+            };
+        }
+    }
+
+    // Ustawia „aktywne” pola czytane przez Proxy / serwowanie lokalne / Inject z danego
+    // źródła. Wywoływane przy starcie i przy każdym przełączeniu (SwitchSource).
+    private void ApplySource(AppSource source)
     {
         _appDirectory = source.Directory ?? "";
         _page = source.Page;
         _origin = source.Origin;
         _startPath = NormalizeStartPath(source.LocalStartPath);
+    }
+
+    // Wspólna inicjalizacja sesji (shim, avplay, bind, wątek) dla trybu jedno- i
+    // dwuźródłowego. Pola aktywne ustawia wcześniej ApplySource.
+    private void StartCore(string root, TvProfile profile, bool pointerEnabled, bool debug, string videoComposition)
+    {
         _profile = profile;
         _pointerEnabled = pointerEnabled;
         _debug = debug;
@@ -172,6 +285,19 @@ public sealed class AppServer : IDisposable
         (_listener, Port) = Bind();
         _thread = new Thread(Loop) { IsBackground = true, Name = "TvEmulatorHttp" };
         _thread.Start();
+    }
+
+    // Prywatne przeciążenie z etykietą; pojedyncze Start powyżej delegują tutaj, by
+    // spójnie wypełnić listę źródeł (jeden wpis) i ustawić aktywne pola.
+    private void Start(string root, AppSource source, string label, TvProfile profile, bool pointerEnabled, bool debug, string videoComposition)
+    {
+        _sources = new List<AppSource> { source };
+        _labels = new List<string> { label };
+        _activeIndex = 0;
+        _pendingNotice = "";
+        _shelfDirectory = "";
+        ApplySource(source);
+        StartCore(root, profile, pointerEnabled, debug, videoComposition);
     }
 
     public void Dispose()
@@ -351,6 +477,54 @@ public sealed class AppServer : IDisposable
             return;
         }
 
+        if (path == "/__emulator/compare-trace" && context.Request.HttpMethod == "POST")
+        {
+            using var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8);
+            var body = reader.ReadToEnd();
+            if (body.Length > 8_000)
+                body = body.Substring(0, 8_000);
+            CompareTrace?.Invoke(body);
+            Write(context, 204, "text/plain", []);
+            return;
+        }
+
+        if (path == "/__emulator/open" && context.Request.HttpMethod == "POST")
+        {
+            var restore = context.Request.QueryString["return"] == "1";
+            WriteJson(context, OpenShelf(context.Request.QueryString["url"], restore));
+            return;
+        }
+
+        if (path == "/__emulator/compare" && context.Request.HttpMethod == "POST")
+        {
+            var target = int.TryParse(context.Request.QueryString["target"], out var parsedTarget) ? parsedTarget : -1;
+            JsonObject response;
+            int? switchedTo = null;
+            lock (_compareGate)
+            {
+                if (_sources.Count < 2 || target < 0 || target >= _sources.Count)
+                {
+                    response = new JsonObject { ["ok"] = false };
+                }
+                else if (target == _activeIndex)
+                {
+                    response = new JsonObject { ["ok"] = true, ["switched"] = false };
+                }
+                else
+                {
+                    SwitchSource(target);
+                    _pendingNotice = target < _labels.Count ? _labels[target] : "";
+                    response = new JsonObject { ["ok"] = true, ["switched"] = true };
+                    switchedTo = target;
+                }
+            }
+
+            if (switchedTo is int index)
+                CompareSwitched?.Invoke(index);
+            WriteJson(context, response);
+            return;
+        }
+
         if (PlaneFiles.TryGetValue(path, out var planeFile))
         {
             var full = Path.Combine(_shimDirectory, planeFile);
@@ -425,6 +599,19 @@ public sealed class AppServer : IDisposable
 
     private string Inject(string html, TvProfile profile)
     {
+        bool compareMode;
+        int compareActive;
+        string compareNotice;
+        bool shelfReturn;
+        lock (_compareGate)
+        {
+            compareMode = _sources.Count == 2;
+            compareActive = _activeIndex;
+            compareNotice = _pendingNotice;
+            _pendingNotice = "";
+            shelfReturn = _origin is not null && _shelfDirectory.Length > 0;
+        }
+
         var payload = new
         {
             platform = profile.Platform,
@@ -438,7 +625,11 @@ public sealed class AppServer : IDisposable
             viewport = profile.Viewport,
             product = profile.Product,
             quirks = profile.Quirks,
-            appInfo = ResolveAppInfo()
+            appInfo = ResolveAppInfo(),
+            compareMode,
+            compareActive,
+            compareNotice,
+            shelfReturn
         };
         var json = JsonSerializer.Serialize(payload, JsonDefaults.Options);
         if (!_stageReady.Wait(StageWait))

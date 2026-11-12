@@ -9,6 +9,8 @@ public sealed class UserSettings
     public List<string> HiddenProfiles { get; set; } = new();
     public double? CpuClockGhz { get; set; }
     public List<ProfileBudget> Budgets { get; set; } = new();
+    public bool CompareMode { get; set; }
+    public string CompareAppB { get; set; } = "";
 }
 
 public sealed class ProfileBudget
@@ -38,6 +40,7 @@ public static class UserSettingsStore
             settings.DefaultApp ??= "";
             settings.HiddenProfiles ??= new List<string>();
             settings.Budgets ??= new List<ProfileBudget>();
+            settings.CompareAppB ??= "";
             if (settings.CpuClockGhz is <= 0)
                 settings.CpuClockGhz = null;
             return settings;
@@ -62,7 +65,9 @@ public static class UserSettingsStore
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList(),
             CpuClockGhz = settings.CpuClockGhz is > 0 and < 20 ? settings.CpuClockGhz : null,
-            Budgets = CleanBudgets(settings.Budgets)
+            Budgets = CleanBudgets(settings.Budgets),
+            CompareMode = settings.CompareMode,
+            CompareAppB = settings.CompareAppB?.Trim() ?? ""
         };
         File.WriteAllText(path, JsonSerializer.Serialize(clean, JsonDefaults.Options));
     }

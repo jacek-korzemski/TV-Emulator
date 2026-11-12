@@ -272,7 +272,7 @@ public class AvplayTests
         var shim = File.ReadAllText(Path.Combine(RepoPaths.Root(), "shims", "platform.js"));
         var key = "#" + VideoPlane.KeyColor.ToString("x6");
         Assert.Contains("\"" + key + "\"", shim);
-        Assert.Contains("avplay: createAvplay()", shim);
+        Assert.Contains("avplay: createAvplay(files)", shim);
         Assert.Contains("application/avplayer", shim);
         Assert.Contains("installPlayerFallback();", shim);
         Assert.Contains("videoComposition === \"alpha\"", shim);

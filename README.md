@@ -123,6 +123,8 @@ For the webOS profile, point at `samples\webos-hello`.
 
 `samples\platform-hello` prints the user agent and whichever device API the selected profile installed. `samples\hbbtv-broadcast` is for the HbbTV profile: Enter binds `video/broadcast` to a clear DASH stream.
 
+`samples\tv-apps` is a local shelf of hosted TV pages. The folder stays on this PC and is not part of the repository. Enter opens the selected page in this window, with the profile user agent and device API. F7 returns to the list.
+
 Your own app is a folder with `index.html`, or a pasted page address.
 
 ## Controls
@@ -130,6 +132,7 @@ Your own app is a folder with `index.html`, or a pasted page address.
 - Arrows and Enter work like a remote.
 - Esc is Back.
 - F1, F2, F3, and F4 are the color keys.
+- Check **Włącz tryb porównywania** to type two apps. F8 returns to the first and F9 opens the second. The path and hash stay, so both open on the same screen.
 - Gamepad: D-pad, A = Enter, B = Back, LB, RB, X, and Y = colors.
 - **Ctrl+Shift+Q** returns to the settings window.
 
@@ -141,7 +144,7 @@ The settings window shows a preview address as soon as the program starts (it pr
 
 Turn on **Diagnostic log** before **Launch**. That is what attaches to the page and fills the preview. The same switch writes `logs\session-….log`.
 
-Four tabs:
+Five tabs:
 
 ### Console (`Konsola`)
 
@@ -168,6 +171,10 @@ The second line is a lighter trace of live objects. It updates in small pieces a
 Column headers sort the table. A leak looks like a constructor that grows between snapshots and does not shrink after you leave a screen: `Array`, `Object`, string, `ArrayBuffer`, or DOM nodes. Snapshot on the screen, leave it, snapshot again.
 
 A full snapshot on Chromium older than 62 can kill that browser. The 2017–2018 Tizen profiles and the webOS 4 profile are in that range. Prefer the live lines there, and treat a full dump as a last resort.
+
+### Compare (`Porównanie`)
+
+With compare mode on, this tab puts the two apps next to each other. Each card shows the JavaScript heap over time, plus the average, minimum, and maximum heap and document load. The table lists each route with the time spent there and the heap on both apps. Turn on GC Chromium on the memory tab to collect the heap. Firefox reports only the time spent on a route.
 
 ### Log (`Log`)
 

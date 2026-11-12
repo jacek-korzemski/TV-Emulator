@@ -42,6 +42,16 @@ public sealed class DebugHub
     private readonly DebugStatus _status = new();
     private long _consoleIds;
     private long _networkIds;
+    private bool _compareOn;
+    private readonly string[] _compareLabels = ["", ""];
+    private int _compareIndex;
+    private string _compareRoute = "";
+    private readonly List<long>[] _compareMemory = [new(), new()];
+    private readonly RunningStat[] _compareMemoryStat = [new(), new()];
+    private readonly RunningStat[] _compareDocument = [new(), new()];
+    private readonly List<RouteStats> _compareRoutes = new();
+    private const int CompareMemoryLimit = 90;
+    private const int CompareRouteLimit = 100;
 
     public event Action<string>? SnapshotRequested;
     public event Action<string, bool>? GcTrackingRequested;
@@ -73,6 +83,7 @@ public sealed class DebugHub
             _heap.Clear();
             _previousHeap.Clear();
             _recent.Clear();
+            ClearCompareLocked();
             _status.Active = true;
             _status.Diagnostics = diagnostics;
             _status.ProfileId = profileId;
@@ -85,7 +96,7 @@ public sealed class DebugHub
                 Video = diagnostics && video ? "connecting" : "off"
             };
             _status.Gc = new GcFlags { IntervalMs = GcFlags.Normalize(_status.Gc.IntervalMs) };
-            json = Serialize(new { type = "reset", status = _status });
+            json = Serialize(new { type = "reset", status = _status, compare = CompareWire() });
             listeners = _listeners.ToArray();
         }
 
@@ -254,17 +265,153 @@ public sealed class DebugHub
         if (sample.Source is not ("engine" or "video"))
             return;
         string json;
+        string? compareJson = null;
         Action<string>[] listeners;
         lock (_gate)
         {
             var list = _memory[sample.Source];
             list.Add(sample);
             Trim(list, MemoryLimit);
+            if (sample.Source == "engine")
+                compareJson = AttributeCompareMemory(sample.Used);
             json = Serialize(new { type = "memory", sample });
             listeners = _listeners.ToArray();
         }
 
         Dispatch(listeners, json);
+        if (compareJson is not null)
+            Dispatch(listeners, compareJson);
+    }
+
+    public void BeginCompare(string labelA, string labelB)
+    {
+        string json;
+        Action<string>[] listeners;
+        lock (_gate)
+        {
+            ClearCompareLocked();
+            _compareOn = true;
+            _compareLabels[0] = CleanCompareText(labelA);
+            _compareLabels[1] = CleanCompareText(labelB);
+            json = CompareMessage();
+            listeners = _listeners.ToArray();
+        }
+
+        Dispatch(listeners, json);
+    }
+
+    public void SetCompareIndex(int index)
+    {
+        if (index is not (0 or 1))
+            return;
+        string? json = null;
+        Action<string>[] listeners;
+        lock (_gate)
+        {
+            listeners = _listeners.ToArray();
+            if (_compareOn && _compareIndex != index)
+            {
+                _compareIndex = index;
+                _compareRoute = "";
+                json = CompareMessage();
+            }
+        }
+
+        if (json is not null)
+            Dispatch(listeners, json);
+    }
+
+    public void AcceptCompareTrace(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return;
+        JsonNode? node;
+        try
+        {
+            node = JsonNode.Parse(json);
+        }
+        catch (JsonException)
+        {
+            return;
+        }
+
+        var kind = node?["kind"]?.ToString() ?? "";
+        var route = node?["route"]?.ToString();
+        var dwell = ReadCompareLong(node?["dwellMs"]);
+        if (kind == "route")
+            NoteCompareRoute(route);
+        else if (kind == "visit")
+            NoteCompareVisit(route, dwell);
+    }
+
+    public void NoteCompareRoute(string? route)
+    {
+        var clean = CleanCompareText(route);
+        string? json = null;
+        Action<string>[] listeners;
+        lock (_gate)
+        {
+            listeners = _listeners.ToArray();
+            if (_compareOn)
+            {
+                _compareRoute = clean;
+                if (clean.Length > 0)
+                    RouteLocked(clean);
+                json = CompareMessage();
+            }
+        }
+
+        if (json is not null)
+            Dispatch(listeners, json);
+    }
+
+    public void NoteCompareVisit(string? route, long dwellMs)
+    {
+        var clean = CleanCompareText(route);
+        if (clean.Length == 0)
+            return;
+        if (dwellMs < 0)
+            dwellMs = 0;
+        string? json = null;
+        Action<string>[] listeners;
+        lock (_gate)
+        {
+            listeners = _listeners.ToArray();
+            if (_compareOn)
+            {
+                RouteLocked(clean).Dwell[_compareIndex].Add(dwellMs);
+                json = CompareMessage();
+            }
+        }
+
+        if (json is not null)
+            Dispatch(listeners, json);
+    }
+
+    public void NoteCompareDocument(long durationMs)
+    {
+        if (durationMs < 0)
+            return;
+        string? json = null;
+        Action<string>[] listeners;
+        lock (_gate)
+        {
+            listeners = _listeners.ToArray();
+            if (_compareOn)
+            {
+                _compareDocument[_compareIndex].Add(durationMs);
+                json = CompareMessage();
+            }
+        }
+
+        if (json is not null)
+            Dispatch(listeners, json);
+    }
+
+    public string CompareJson()
+    {
+        lock (_gate)
+            return Serialize(CompareWire());
     }
 
     public void AddGc(HeapGcSample sample)
@@ -539,7 +686,8 @@ public sealed class DebugHub
         log = _logs,
         memory = _memory,
         gc = _gc,
-        heap = _heap
+        heap = _heap,
+        compare = CompareWire()
     });
 
     private static object Wire(NetworkCall call) => new
@@ -613,6 +761,134 @@ public sealed class DebugHub
         lock (_gate)
             listeners = _listeners.ToArray();
         Dispatch(listeners, json);
+    }
+
+    private string? AttributeCompareMemory(long? used)
+    {
+        if (!_compareOn || used is not long value || value < 0)
+            return null;
+        var samples = _compareMemory[_compareIndex];
+        samples.Add(value);
+        Trim(samples, CompareMemoryLimit);
+        _compareMemoryStat[_compareIndex].Add(value);
+        if (_compareRoute.Length > 0)
+            RouteLocked(_compareRoute).Memory[_compareIndex].Add(value);
+        return CompareMessage();
+    }
+
+    private void ClearCompareLocked()
+    {
+        _compareOn = false;
+        _compareLabels[0] = "";
+        _compareLabels[1] = "";
+        _compareIndex = 0;
+        _compareRoute = "";
+        _compareMemory[0].Clear();
+        _compareMemory[1].Clear();
+        _compareMemoryStat[0].Reset();
+        _compareMemoryStat[1].Reset();
+        _compareDocument[0].Reset();
+        _compareDocument[1].Reset();
+        _compareRoutes.Clear();
+    }
+
+    private RouteStats RouteLocked(string route)
+    {
+        foreach (var existing in _compareRoutes)
+        {
+            if (existing.Route == route)
+                return existing;
+        }
+
+        if (_compareRoutes.Count >= CompareRouteLimit)
+            _compareRoutes.RemoveAt(0);
+        var created = new RouteStats { Route = route };
+        _compareRoutes.Add(created);
+        return created;
+    }
+
+    private string CompareMessage() => Serialize(new { type = "compare", compare = CompareWire() });
+
+    private object CompareWire() => new
+    {
+        active = _compareOn,
+        activeIndex = _compareIndex,
+        route = _compareRoute,
+        apps = new[] { AppWire(0), AppWire(1) },
+        routes = _compareRoutes.Select(RouteWire).ToArray()
+    };
+
+    private object AppWire(int index) => new
+    {
+        label = _compareLabels[index],
+        memory = _compareMemory[index].ToArray(),
+        memoryStat = _compareMemoryStat[index].Wire(),
+        document = _compareDocument[index].Wire()
+    };
+
+    private static object RouteWire(RouteStats route) => new
+    {
+        route = route.Route,
+        dwell = new[] { route.Dwell[0].Wire(), route.Dwell[1].Wire() },
+        memory = new[] { route.Memory[0].Wire(), route.Memory[1].Wire() }
+    };
+
+    private static string CleanCompareText(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "";
+        var clean = text.Trim();
+        return clean.Length > 2000 ? clean.Substring(0, 2000) : clean;
+    }
+
+    private static long ReadCompareLong(JsonNode? node)
+    {
+        if (node is not JsonValue value)
+            return 0;
+        if (value.TryGetValue<long>(out var whole))
+            return whole;
+        if (value.TryGetValue<int>(out var integer))
+            return integer;
+        if (value.TryGetValue<double>(out var number) && double.IsFinite(number))
+            return (long)number;
+        return 0;
+    }
+
+    private sealed class RunningStat
+    {
+        public int Count;
+        public long Sum;
+        public long Min;
+        public long Max;
+
+        public void Add(long value)
+        {
+            if (Count == 0 || value < Min)
+                Min = value;
+            if (Count == 0 || value > Max)
+                Max = value;
+            Count++;
+            Sum += value;
+        }
+
+        public void Reset()
+        {
+            Count = 0;
+            Sum = 0;
+            Min = 0;
+            Max = 0;
+        }
+
+        public object Wire() => Count == 0
+            ? new { count = 0 }
+            : new { count = Count, min = Min, max = Max, avg = (double)Sum / Count };
+    }
+
+    private sealed class RouteStats
+    {
+        public string Route { get; set; } = "";
+        public RunningStat[] Dwell { get; } = [new(), new()];
+        public RunningStat[] Memory { get; } = [new(), new()];
     }
 
     private static string Stamp() => DateTime.Now.ToString("HH:mm:ss.fff");

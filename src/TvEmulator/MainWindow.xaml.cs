@@ -66,6 +66,8 @@ public partial class MainWindow : Window
             MonitorBox.SelectedIndex = 0;
 
         DirectoryBox.Text = UserSettingsStore.StartupApp(_userSettings, SampleApp());
+        CompareBox.IsChecked = _userSettings.CompareMode;
+        DirectoryBoxB.Text = string.IsNullOrWhiteSpace(_userSettings.CompareAppB) ? "" : _userSettings.CompareAppB;
         _settingsBackground = Background;
         BindProfiles();
         _ = StartDebugPanel();
@@ -131,6 +133,19 @@ public partial class MainWindow : Window
         return Directory.Exists(sample) ? sample : "";
     }
 
+    internal static AppSource ValidateAppSource(string text)
+    {
+        var trimmed = text.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+            throw new InvalidOperationException("Podaj katalog z index.html albo adres http(s).");
+        var source = AppSource.Parse(trimmed);
+        if (source.IsRemote)
+            return source;
+        if (!File.Exists(Path.Combine(source.Directory ?? "", "index.html")))
+            throw new InvalidOperationException("Podaj katalog z index.html albo adres http(s).");
+        return source;
+    }
+
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
@@ -184,6 +199,25 @@ public partial class MainWindow : Window
             DirectoryBox.Text = dialog.SelectedPath;
     }
 
+    private void BrowseBClick(object sender, RoutedEventArgs e)
+    {
+        using var dialog = new System.Windows.Forms.FolderBrowserDialog
+        {
+            Description = "Katalog aplikacji HTML",
+            UseDescriptionForTitle = true,
+            SelectedPath = Directory.Exists(DirectoryBoxB.Text) ? DirectoryBoxB.Text : _root
+        };
+        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            DirectoryBoxB.Text = dialog.SelectedPath;
+    }
+
+    private void CompareBoxChanged(object sender, RoutedEventArgs e)
+    {
+        var on = CompareBox.IsChecked == true;
+        CompareAppBPanel.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        CompareHint.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void StartClick(object sender, RoutedEventArgs e) => BeginSession();
 
     private void BeginSession()
@@ -200,9 +234,9 @@ public partial class MainWindow : Window
             if (MonitorBox.SelectedItem is not MonitorChoice monitor)
                 throw new InvalidOperationException("Wybierz monitor.");
 
-            var source = AppSource.Parse(DirectoryBox.Text);
-            if (!source.IsRemote && !File.Exists(Path.Combine(source.Directory ?? "", "index.html")))
-                throw new InvalidOperationException("Podaj katalog z index.html albo adres http(s).");
+            var compare = CompareBox.IsChecked == true;
+            var a = ValidateAppSource(DirectoryBox.Text);
+            var b = compare ? ValidateAppSource(DirectoryBoxB.Text) : a;
 
             var engine = _engines.FirstOrDefault(item => item.Id == profile.Engine)
                 ?? throw new InvalidOperationException("Profil wskazuje silnik, którego nie ma w engines/builds.json.");
@@ -223,7 +257,7 @@ public partial class MainWindow : Window
             if (DebugBox.IsChecked == true)
             {
                 _sessionLog = new SessionLog(Path.Combine(_root, "logs"));
-                _sessionLog.Write("start profile=" + profile.Id + " engine=" + profile.Engine + " target=" + DirectoryBox.Text.Trim());
+                _sessionLog.Write("start profile=" + profile.Id + " engine=" + profile.Engine + " target=" + DirectoryBox.Text.Trim() + (compare ? " compare=" + DirectoryBoxB.Text.Trim() : ""));
             }
 
             _server.ExitRequested += () => Dispatcher.BeginInvoke(() => EndSession("Aplikacja zakończyła sesję."));
@@ -235,7 +269,17 @@ public partial class MainWindow : Window
                 Dispatcher.BeginInvoke(() => StatusText.Text = shown);
             };
             _server.DebugReported += message => _debugServer?.Hub.AddShim(message);
-            _server.Start(_root, source, profile, PointerBox.IsChecked == true, DebugBox.IsChecked == true, "colorKey");
+            _server.CompareTrace += body => _debugServer?.Hub.AcceptCompareTrace(body);
+            _server.CompareSwitched += index => _debugServer?.Hub.SetCompareIndex(index);
+            if (compare)
+                _server.StartCompare(_root, a, b, DirectoryBox.Text.Trim(), DirectoryBoxB.Text.Trim(), profile, PointerBox.IsChecked == true, DebugBox.IsChecked == true, "colorKey");
+            else
+                _server.Start(_root, a, profile, PointerBox.IsChecked == true, DebugBox.IsChecked == true, "colorKey");
+
+            _userSettings.CompareMode = compare;
+            if (compare)
+                _userSettings.CompareAppB = DirectoryBoxB.Text.Trim();
+            UserSettingsStore.Save(_userSettings);
 
             if (profile.Player is "edge" or "avplay")
             {
@@ -264,6 +308,8 @@ public partial class MainWindow : Window
             _launchMemory = budget?.MemoryMb;
             _gpuFallbackUsed = false;
             _debugServer?.Hub.BeginSession(profile.Id, profile.Label, profile.Engine, debug, _sessionLog?.FilePath, _plane is not null);
+            if (compare)
+                _debugServer?.Hub.BeginCompare(DirectoryBox.Text.Trim(), DirectoryBoxB.Text.Trim());
             if (debug && _debugServer is not null && !string.Equals(engine.Kind, "firefox", StringComparison.Ordinal))
             {
                 _cdp = CdpWatcher.Start(_debugServer.Hub, _plane is not null);

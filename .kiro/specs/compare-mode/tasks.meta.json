@@ -1,0 +1,191 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Dodaj pola CompareMode (bool) i CompareAppB (string) do UserSettings oraz czyszczenie w Save/Load": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794492881657
+      },
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794492899791
+      },
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794493815636
+      }
+    ],
+    "2.1 Dodaj pola _sources/_labels/_activeIndex/_pendingNotice oraz StartCompare i SwitchSource": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794492883269
+      },
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794492899849
+      },
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794493815825
+      }
+    ],
+    "3.1 Dodaj POST /__emulator/compare oraz pola compareMode/compareActive/compareNotice w Inject": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794492884077
+      },
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794493857852
+      },
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794494328358
+      }
+    ],
+    "4.1 Dodaj obsługę F8(119)/F9(120), compareSwitch i snackbar z compareNotice": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794492884137
+      },
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794494351917
+      },
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794496663995
+      }
+    ],
+    "5.1 Dodaj CompareBox, DirectoryBoxB + drugi Przeglądaj, przełączanie widoczności, pre-fill i zapis": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794492884213
+      },
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794493857935
+      },
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794494328527
+      }
+    ],
+    "6.1 Dodaj ValidateAppSource i ścieżkę BeginSession dla dwóch aplikacji": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794492884264
+      },
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794494352012
+      },
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794497181356
+      }
+    ],
+    "7.1 Napisz test integracyjny pełnego przełączenia i zaktualizuj README/changelog": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794492884342
+      }
+    ],
+    "7.2 Zaktualizuj README i changelog.json": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794492884392
+      }
+    ],
+    "8. Checkpoint — wszystkie testy zielone": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794492884463
+      }
+    ],
+    "1. UserSettings — pola CompareMode i CompareAppB": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794493815737
+      }
+    ],
+    "2. AppServer — model wieloźródłowy": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794493815908
+      }
+    ],
+    "3. AppServer — endpoint porównawczy i payload profilu": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794494328448
+      }
+    ],
+    "5. MainWindow — UI checkboxa i drugiego pola aplikacji": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794494328596
+      }
+    ],
+    "4. platform.js — przechwyt F8/F9, compareSwitch i snackbar (ES5)": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794496664087
+      }
+    ],
+    "6. MainWindow — ścieżka startu w trybie porównywania": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794497181446
+      }
+    ],
+    "1.2 Napisz testy property dla round-tripu ustawień porównawczych": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794497181557
+      }
+    ],
+    "2.2 Napisz testy property dla przełączania źródeł": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794497181659
+      }
+    ],
+    "6.2 Napisz testy jednostkowe dla ValidateAppSource": [
+      {
+        "executionId": "5c031224-cb92-4870-94e7-1186f8ea077f",
+        "chatSessionId": "sess_83af8219-7ea9-4131-a845-4f53e5e654b8",
+        "timestamp": 1794497181773
+      }
+    ]
+  }
+}

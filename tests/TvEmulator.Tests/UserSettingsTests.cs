@@ -90,4 +90,114 @@ public class UserSettingsTests
                 Directory.Delete(directory, true);
         }
     }
+
+    private static string NewSettingsPath() =>
+        Path.Combine(Path.GetTempPath(), "tv-emulator-settings-" + Guid.NewGuid().ToString("N"), "settings.json");
+
+    private static void CleanupSettings(string path)
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(directory) && Directory.Exists(directory))
+            Directory.Delete(directory, true);
+    }
+
+    [Fact]
+    [Trait("Category", "Feature: compare-mode, Property 1: Round-trip ustawień porównawczych")]
+    public void CompareSettingsRoundTripAndTrim()
+    {
+        var path = NewSettingsPath();
+        try
+        {
+            UserSettingsStore.Save(new UserSettings
+            {
+                CompareMode = true,
+                CompareAppB = " https://b.example/app "
+            }, path);
+
+            var loaded = UserSettingsStore.Load(path);
+            Assert.True(loaded.CompareMode);
+            Assert.Equal("https://b.example/app", loaded.CompareAppB);
+        }
+        finally
+        {
+            CleanupSettings(path);
+        }
+    }
+
+    [Fact]
+    [Trait("Category", "Feature: compare-mode, Property 1: Round-trip ustawień porównawczych")]
+    public void CompareSettingsRoundTripFalseAndEmpty()
+    {
+        var path = NewSettingsPath();
+        try
+        {
+            UserSettingsStore.Save(new UserSettings
+            {
+                CompareMode = false,
+                CompareAppB = ""
+            }, path);
+
+            var loaded = UserSettingsStore.Load(path);
+            Assert.False(loaded.CompareMode);
+            Assert.Equal("", loaded.CompareAppB);
+        }
+        finally
+        {
+            CleanupSettings(path);
+        }
+    }
+
+    [Fact]
+    [Trait("Category", "Feature: compare-mode, Property 1: Round-trip ustawień porównawczych")]
+    public void OldSettingsWithoutCompareKeysGetDefaults()
+    {
+        var path = NewSettingsPath();
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            // A pre-compare-mode settings.json: no compareMode/compareAppB keys present.
+            File.WriteAllText(path,
+                "{" +
+                "  \"defaultApp\": \"https://example.com/app/\"," +
+                "  \"hiddenProfiles\": [\"webos-4\"]" +
+                "}");
+
+            var loaded = UserSettingsStore.Load(path);
+            Assert.False(loaded.CompareMode);
+            Assert.Equal("", loaded.CompareAppB);
+            Assert.Equal("https://example.com/app/", loaded.DefaultApp);
+            Assert.Equal(new[] { "webos-4" }, loaded.HiddenProfiles.ToArray());
+        }
+        finally
+        {
+            CleanupSettings(path);
+        }
+    }
+
+    [Fact]
+    [Trait("Category", "Feature: compare-mode, Property 1: Round-trip ustawień porównawczych")]
+    public void CompareSettingsRoundTripPreservesExistingFields()
+    {
+        var path = NewSettingsPath();
+        try
+        {
+            UserSettingsStore.Save(new UserSettings
+            {
+                DefaultApp = "https://a.example/app",
+                HiddenProfiles = ["tizen-2017", "vidaa-u6"],
+                CompareMode = true,
+                CompareAppB = " https://b.example/app "
+            }, path);
+
+            var loaded = UserSettingsStore.Load(path);
+            Assert.Equal("https://a.example/app", loaded.DefaultApp);
+            Assert.Equal(new[] { "tizen-2017", "vidaa-u6" }, loaded.HiddenProfiles.ToArray());
+            Assert.True(loaded.CompareMode);
+            Assert.Equal("https://b.example/app", loaded.CompareAppB);
+        }
+        finally
+        {
+            CleanupSettings(path);
+        }
+    }
 }

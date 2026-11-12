@@ -695,6 +695,7 @@ public sealed class CdpWatcher : IDisposable
                 Time = DateTime.Now.ToString("HH:mm:ss.fff")
             };
             CdpProtocol.ApplyRequest(call, param);
+            call.ParserInitiated = string.Equals(param["initiator"]?["type"]?.ToString(), "parser", StringComparison.Ordinal);
             _calls[requestId] = call;
             _hub.UpsertNetwork(call);
         }
@@ -715,6 +716,18 @@ public sealed class CdpWatcher : IDisposable
                 return;
             CdpProtocol.ApplyFinished(call, param);
             _hub.UpsertNetwork(call);
+            if (Source == "engine"
+                && call.Type == "document"
+                && !call.ParserInitiated
+                && !call.CompareDocumentCounted
+                && call.DurationMs is long duration
+                && duration >= 0
+                && call.Url.IndexOf("/__emulator/", StringComparison.OrdinalIgnoreCase) < 0
+                && !CdpProtocol.IsDeadPage(call.Url))
+            {
+                call.CompareDocumentCounted = true;
+                _hub.NoteCompareDocument(duration);
+            }
             if (!CdpProtocol.ShouldFetchBody(call))
             {
                 if (call.Type is "image" or "media" or "font")

@@ -85,6 +85,8 @@ public sealed class NetworkCall
     public bool BodyTruncated { get; set; }
     public double StartedMono { get; set; }
     public bool HasStart { get; set; }
+    public bool ParserInitiated { get; set; }
+    public bool CompareDocumentCounted { get; set; }
 }
 
 public sealed class MemorySample

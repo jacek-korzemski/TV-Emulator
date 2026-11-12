@@ -64,7 +64,9 @@ public partial class SettingsWindow : Window
             DefaultApp = AppBox.Text.Trim(),
             HiddenProfiles = _toggles.Where(item => !item.Visible).Select(item => item.Id).ToList(),
             CpuClockGhz = _source.CpuClockGhz,
-            Budgets = _source.Budgets ?? new List<ProfileBudget>()
+            Budgets = _source.Budgets ?? new List<ProfileBudget>(),
+            CompareMode = _source.CompareMode,
+            CompareAppB = _source.CompareAppB ?? ""
         };
         DialogResult = true;
     }

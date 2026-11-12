@@ -49,6 +49,11 @@ foreach ($name in @('profiles', 'shims', 'debug-ui', 'samples')) {
     Copy-Tree $source (Join-Path $dest $name)
 }
 
+$shelf = Join-Path $dest 'samples\tv-apps'
+if (Test-Path $shelf) {
+    Remove-Item $shelf -Recurse -Force
+}
+
 $enginesDest = Join-Path $dest 'engines'
 New-Item -ItemType Directory -Force -Path $enginesDest | Out-Null
 Copy-Item (Join-Path $repo 'engines\builds.json') (Join-Path $enginesDest 'builds.json')

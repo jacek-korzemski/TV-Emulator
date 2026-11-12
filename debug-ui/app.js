@@ -8,6 +8,7 @@
     memory: { engine: [], video: [] },
     gc: { engine: [], video: [] },
     heap: {},
+    compare: null,
     progress: {},
     heapSort: {
       retained: { key: "selfSize", dir: -1 },
@@ -120,6 +121,7 @@
       state.memory = message.memory || { engine: [], video: [] };
       state.gc = message.gc || { engine: [], video: [] };
       state.heap = message.heap || {};
+      state.compare = message.compare || null;
       state.openNet = null;
       state.netDetail = null;
     } else if (message.type === "reset") {
@@ -130,6 +132,7 @@
       state.memory = { engine: [], video: [] };
       state.gc = { engine: [], video: [] };
       state.heap = {};
+      state.compare = message.compare || null;
       state.progress = {};
       state.openNet = null;
       state.netDetail = null;
@@ -179,6 +182,8 @@
       }, 15000);
     } else if (message.type === "heap-error") {
       state.progress[message.source] = { error: message.message };
+    } else if (message.type === "compare") {
+      state.compare = message.compare || null;
     } else if (message.type === "cleared") {
       if (message.channel === "console") state.console = [];
       if (message.channel === "network") {
@@ -201,6 +206,7 @@
     if (message.type === "network" || message.type === "cleared" && message.channel === "network") return state.tab === "network";
     if (message.type === "log" || message.type === "cleared" && message.channel === "log") return state.tab === "log";
     if (message.type === "memory" || message.type === "gc" || message.type === "heap" || message.type === "heap-progress" || message.type === "heap-error") return state.tab === "memory";
+    if (message.type === "compare") return state.tab === "compare";
     return false;
   }
 
@@ -295,6 +301,8 @@
       html += gcButton("video", "GC wideo");
       html += '<label class="gc-interval">Odświeżanie <input id="gc-interval" type="range" min="50" max="500" step="50" value="' + gcInterval() + '" aria-label="Odświeżanie GC"> <span>' + gcInterval() + " ms</span></label>";
       html += '<button type="button" data-action="help" aria-label="Jak czytać pamięć">ⓘ</button>';
+    } else if (state.tab === "compare") {
+      html = "";
     } else {
       html += '<button type="button" data-action="clear" data-channel="log">Wyczyść</button>';
     }
@@ -398,9 +406,11 @@
     if (state.tab === "console") html = renderConsole();
     else if (state.tab === "network") html = renderNetwork();
     else if (state.tab === "memory") html = renderMemory();
+    else if (state.tab === "compare") html = renderCompare();
     else html = renderLog();
     scroller.innerHTML = html;
     if (state.tab === "memory") drawSparks();
+    if (state.tab === "compare") drawCompareSparks();
     if (stick && followsLive()) scroller.scrollTop = scroller.scrollHeight;
     else scroller.scrollTop = previous;
   }
@@ -680,6 +690,82 @@
     return dir * ((Number(a[key]) || 0) - (Number(b[key]) || 0));
   }
 
+  function renderCompare() {
+    var compare = state.compare;
+    if (!compare || !compare.active) {
+      return '<p class="empty">Włącz tryb porównywania i uruchom sesję, żeby zestawić obie aplikacje.</p>';
+    }
+    var html = '<p class="note">Czas na trasie to, jak długo widok został na adresie. Pamięć i czas dokumentu pochodzą z Chromium. Włącz GC Chromium na zakładce Pamięć, żeby zebrać stertę. Firefox podaje sam czas na trasie.</p>';
+    html += '<div class="memory-grid">';
+    html += compareCard(compare, 0);
+    html += compareCard(compare, 1);
+    html += "</div>";
+    html += renderCompareRoutes(compare);
+    return html;
+  }
+
+  function compareCard(compare, index) {
+    var app = (compare.apps && compare.apps[index]) || {};
+    var title = app.label || ("Aplikacja " + (index + 1));
+    var current = compare.activeIndex === index ? " · teraz" : "";
+    var html = '<section class="card"><h2>' + esc(title) + esc(current) + "</h2>";
+    var memory = app.memoryStat;
+    if (memory && memory.count) {
+      html += '<div class="figure">' + esc(formatBytes(memory.avg)) + "</div>";
+      html += '<p class="muted">Pamięć · ' + esc(formatStat(memory, formatBytes)) + "</p>";
+      html += '<canvas data-compare="' + index + '"></canvas>';
+    } else {
+      html += '<p class="muted">Wykres pamięci jest wyłączony. Włącz GC Chromium na zakładce Pamięć.</p>';
+    }
+    html += '<p class="muted">Czas dokumentu · ' + esc(formatStat(app.document, formatCompareDuration)) + "</p>";
+    html += "</section>";
+    return html;
+  }
+
+  function renderCompareRoutes(compare) {
+    var routes = compare.routes || [];
+    if (!routes.length) return '<p class="muted">Jeszcze nie ma trasy. Wejdź na stronę w aplikacji.</p>';
+    var html = '<table class="compare-routes"><thead><tr>';
+    html += "<th>Trasa</th><th>Czas 1</th><th>Czas 2</th><th>Pamięć 1</th><th>Pamięć 2</th>";
+    html += "</tr></thead><tbody>";
+    var i;
+    for (i = 0; i < routes.length; i++) {
+      var row = routes[i];
+      var dwell = row.dwell || [];
+      var memory = row.memory || [];
+      var here = compare.route === row.route ? " · teraz" : "";
+      html += "<tr><td>" + esc(row.route) + esc(here) + "</td>";
+      html += "<td>" + esc(formatStat(dwell[0], formatCompareDuration)) + "</td>";
+      html += "<td>" + esc(formatStat(dwell[1], formatCompareDuration)) + "</td>";
+      html += "<td>" + esc(formatStat(memory[0], formatBytes)) + "</td>";
+      html += "<td>" + esc(formatStat(memory[1], formatBytes)) + "</td></tr>";
+    }
+    html += "</tbody></table>";
+    return html;
+  }
+
+  function formatStat(stat, format) {
+    if (!stat || !stat.count) return "—";
+    return "śr " + format(stat.avg) + " · min " + format(stat.min) + " · max " + format(stat.max);
+  }
+
+  function formatCompareDuration(ms) {
+    var number = Math.round(Number(ms));
+    if (!isFinite(number) || number < 0) return "—";
+    return formatDuration(number);
+  }
+
+  function drawCompareSparks() {
+    var canvases = document.querySelectorAll("canvas[data-compare]");
+    var colors = ["#f2c14e", "#8eb6ff"];
+    var i;
+    for (i = 0; i < canvases.length; i++) {
+      var index = Number(canvases[i].getAttribute("data-compare"));
+      var app = state.compare && state.compare.apps && state.compare.apps[index];
+      drawSpark(canvases[i], (app && app.memory) || [], "used", colors[index] || "#f2c14e");
+    }
+  }
+
   function renderLog() {
     if (!state.log.length) return '<p class="empty">Brak linii logu.</p>';
     var rows = state.log;
@@ -707,7 +793,7 @@
     }
   }
 
-  function drawSpark(canvas, samples, field) {
+  function drawSpark(canvas, samples, field, color) {
     var width = canvas.clientWidth || 280;
     var height = 64;
     var ratio = window.devicePixelRatio || 1;
@@ -718,14 +804,15 @@
     context.clearRect(0, 0, width, height);
     var values = [];
     samples.forEach(function (sample) {
-      if (sample[field] != null) values.push(Number(sample[field]));
+      var value = sample != null && typeof sample === "object" ? sample[field] : sample;
+      if (value != null && value !== "") values.push(Number(value));
     });
     if (!values.length) return;
     var min = Math.min.apply(null, values);
     var max = Math.max.apply(null, values);
     if (max === min) max = min + 1;
     context.beginPath();
-    context.strokeStyle = "#f2c14e";
+    context.strokeStyle = color || "#f2c14e";
     context.lineWidth = 2;
     values.forEach(function (value, index) {
       var x = values.length === 1 ? 2 : (index / (values.length - 1)) * (width - 4) + 2;

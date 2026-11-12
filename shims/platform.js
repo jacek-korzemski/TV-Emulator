@@ -20,6 +20,10 @@
   var shadeLastPayload = "";
   var shadeLastPost = 0;
   var shadeLastDebug = "";
+  var compareVisitRoute = "";
+  var compareVisitAt = 0;
+  var compareSwitching = false;
+  var shelfReturning = false;
 
   function keyCode(name, fallback) {
     return typeof keys[name] === "number" ? keys[name] : fallback;
@@ -114,6 +118,8 @@
     if (profile.player === "edge" && profile.platform !== "tizen" && profile.platform !== "hbbtv") {
       installEdgePlayback();
     }
+    installCompareNotice();
+    installCompareTrace();
   }
 
   /*
@@ -517,6 +523,24 @@
     if (!e || e.__tvEmulator) {
       return;
     }
+    // Compare mode: F8(119) -> app1, F9(120) -> app2. Swallow both edges, switch once on keydown.
+    if (profile.compareMode && (e.keyCode === 119 || e.keyCode === 120)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (e.type === "keydown") {
+        compareSwitch(e.keyCode === 119 ? 0 : 1);
+      }
+      return;
+    }
+    // Shelf: F7(118) returns to the local catalog. Swallow both edges, switch once on keydown.
+    if (profile.shelfReturn && e.keyCode === 118) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (e.type === "keydown") {
+        returnToShelf();
+      }
+      return;
+    }
     var mapped = null;
     if (e.keyCode === 27) {
       mapped = backCode;
@@ -535,6 +559,181 @@
     e.preventDefault();
     e.stopImmediatePropagation();
     dispatchKey(mapped, e.type);
+  }
+
+  // Back to the shelf. Reload would stay on the foreign path and 404 the catalog.
+  function returnToShelf() {
+    if (!profile.shelfReturn || shelfReturning) {
+      return;
+    }
+    shelfReturning = true;
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "/__emulator/open?return=1", true);
+      xhr.onload = function () {
+        var ok = false;
+        try {
+          var body = JSON.parse(xhr.responseText || "");
+          ok = !!(body && body.ok === true);
+        } catch (ignore) {
+          ok = false;
+        }
+        if (ok) {
+          global.location.href = "/";
+          return;
+        }
+        shelfReturning = false;
+      };
+      xhr.onerror = function () {
+        shelfReturning = false;
+      };
+      xhr.send("");
+    } catch (err) {
+      shelfReturning = false;
+      post("/__emulator/log", "shelf-return " + (err && err.message ? err.message : err));
+    }
+  }
+
+  // Switch active source in compare mode. No reload/snackbar when already on target.
+  function compareSwitch(target) {
+    if (!profile.compareMode || compareSwitching) {
+      return;
+    }
+    if (profile.compareActive === target) {
+      return;
+    }
+    compareSwitching = true;
+    flushCompareVisit();
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "/__emulator/compare?target=" + target, true);
+      xhr.onload = function () {
+        var switched = true;
+        try {
+          var body = JSON.parse(xhr.responseText || "");
+          if (!body || body.ok !== true || body.switched === false) {
+            switched = false;
+          }
+        } catch (ignore) {
+          switched = true;
+        }
+        if (switched) {
+          global.location.reload();
+        } else {
+          compareSwitching = false;
+          compareVisitRoute = compareRoute();
+          compareVisitAt = compareNow();
+        }
+      };
+      xhr.onerror = function () { global.location.reload(); };
+      xhr.send("");
+    } catch (err) {
+      compareSwitching = false;
+      compareVisitRoute = compareRoute();
+      compareVisitAt = compareNow();
+      post("/__emulator/log", "compare-switch " + (err && err.message ? err.message : err));
+    }
+  }
+
+  // Route dwell for the compare panel. The visit POST is synchronous so it lands
+  // on the app we are leaving, before /__emulator/compare changes the source.
+  function installCompareTrace() {
+    if (!profile.compareMode) {
+      return;
+    }
+    compareVisitRoute = compareRoute();
+    compareVisitAt = compareNow();
+    sendCompareTrace({ kind: "route", route: compareVisitRoute, dwellMs: 0 }, true);
+    global.addEventListener("hashchange", onCompareMove, false);
+    global.addEventListener("popstate", onCompareMove, false);
+    global.addEventListener("beforeunload", flushCompareVisit, false);
+    wrapCompareHistory("pushState");
+    wrapCompareHistory("replaceState");
+  }
+
+  function compareRoute() {
+    var loc = global.location || {};
+    return String(loc.pathname || "/") + String(loc.search || "") + String(loc.hash || "");
+  }
+
+  function compareNow() {
+    if (global.Date && typeof Date.now === "function") {
+      return Date.now();
+    }
+    return new Date().getTime();
+  }
+
+  function onCompareMove() {
+    var next = compareRoute();
+    if (next === compareVisitRoute) {
+      return;
+    }
+    flushCompareVisit();
+    compareVisitRoute = next;
+    compareVisitAt = compareNow();
+    sendCompareTrace({ kind: "route", route: next, dwellMs: 0 }, true);
+  }
+
+  function flushCompareVisit() {
+    if (!compareVisitRoute) {
+      return;
+    }
+    var dwell = compareNow() - compareVisitAt;
+    if (dwell < 0) {
+      dwell = 0;
+    }
+    var route = compareVisitRoute;
+    compareVisitRoute = "";
+    sendCompareTrace({ kind: "visit", route: route, dwellMs: dwell }, false);
+  }
+
+  function wrapCompareHistory(name) {
+    var history = global.history;
+    if (!history || typeof history[name] !== "function") {
+      return;
+    }
+    var original = history[name];
+    history[name] = function () {
+      var result = original.apply(history, arguments);
+      onCompareMove();
+      return result;
+    };
+  }
+
+  function sendCompareTrace(payload, background) {
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "/__emulator/compare-trace", background);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.send(JSON.stringify(payload));
+    } catch (ignore) {}
+  }
+
+  // Snackbar shown after a compare switch reloads the page. ES5 only.
+  function installCompareNotice() {
+    if (!profile.compareNotice) {
+      return;
+    }
+    var parent = document.body || document.documentElement;
+    if (!parent) {
+      return;
+    }
+    var bar = document.createElement("div");
+    bar.setAttribute("data-tv-emulator", "compare-notice");
+    bar.style.cssText =
+      "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);" +
+      "z-index:2147483647;pointer-events:none;" +
+      "background:#1B1D22;color:#F3F1EA;font-family:'Segoe UI',sans-serif;" +
+      "font-size:14px;font-weight:600;padding:12px 20px;border-radius:8px;" +
+      "box-shadow:0 4px 16px rgba(0,0,0,0.6);max-width:80%;text-align:center;" +
+      "white-space:pre-line;";
+    bar.appendChild(document.createTextNode("Jesteś teraz na: " + profile.compareNotice));
+    parent.appendChild(bar);
+    global.setTimeout(function () {
+      if (bar.parentNode) {
+        bar.parentNode.removeChild(bar);
+      }
+    }, 3000);
   }
 
   function installRemote() {
