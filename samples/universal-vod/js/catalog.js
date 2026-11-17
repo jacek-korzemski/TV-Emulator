@@ -18,7 +18,7 @@ var VodCatalog = (function () {
       year: "2008",
       badge: "PlayReady",
       drm: "playready",
-      synopsis: "Fragment zaszyfrowany PlayReady na serwerze testowym Microsoftu. Odtwarza go AVPlay na profilach Tizen.",
+      synopsis: "Fragment zaszyfrowany PlayReady na serwerze testowym Microsoftu. Odtwarzają go profile, które zgłaszają PlayReady.",
       url: "https://test.playready.microsoft.com/media/dash/APPLEENC_CBCS_BBB_1080p/1080p.mpd",
       license: "https://test.playready.microsoft.com/service/rightsmanager.asmx?cfg=(persist:false,contentkey:W31bfVt9W31bfVt9W31bfQ==,ckt:aes128bitcbc)"
     },
@@ -29,23 +29,46 @@ var VodCatalog = (function () {
       year: "2010",
       badge: "Widevine",
       drm: "widevine",
-      synopsis: "Sintel zaszyfrowany Widevine. Licencja demo Shaka Player nie wymaga tokenu. Odtwarza ją element video.",
+      synopsis: "Sintel zaszyfrowany Widevine. Licencja demo nie wymaga tokenu. Odtwarzają go profile, które zgłaszają Widevine.",
       url: "https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd",
       license: "https://cwip-shaka-proxy.appspot.com/no_auth"
     }
   ];
 
+  function profileAllows(drm) {
+    var profile = window.__TV_EMULATOR_PROFILE__ || {};
+    var list = profile.drm;
+    var i;
+    if (!list) {
+      return null;
+    }
+    for (i = 0; i < list.length; i++) {
+      if (list[i] === drm) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function canPlay(item, kind) {
+    var allowed;
     if (!item) {
       return false;
     }
     if (item.drm === "none") {
       return true;
     }
-    if (item.drm === "playready") {
-      return kind === "avplay";
-    }
-    if (item.drm === "widevine") {
+    if (item.drm === "playready" || item.drm === "widevine") {
+      if ((window.__TV_EMULATOR_PROFILE__ || {}).platform === "hbbtv") {
+        return false;
+      }
+      allowed = profileAllows(item.drm);
+      if (allowed !== null) {
+        return allowed;
+      }
+      if (item.drm === "playready") {
+        return kind === "avplay";
+      }
       return kind === "shaka";
     }
     return false;
@@ -55,11 +78,14 @@ var VodCatalog = (function () {
     if (canPlay(item, kind)) {
       return "";
     }
+    if ((window.__TV_EMULATOR_PROFILE__ || {}).platform === "hbbtv") {
+      return "HbbTV w tym profilu otwiera strumień przez video/broadcast, nie przez EME.";
+    }
     if (item && item.drm === "playready") {
-      return "PlayReady odtwarza AVPlay na profilach Tizen. Ten odbiornik używa Widevine.";
+      return "Ten profil nie zgłasza PlayReady.";
     }
     if (item && item.drm === "widevine") {
-      return "Widevine odtwarza Shaka w elemencie video. Ten odbiornik używa PlayReady.";
+      return "Ten profil nie zgłasza Widevine.";
     }
     return "Tego zabezpieczenia nie odtworzy ten telewizor.";
   }

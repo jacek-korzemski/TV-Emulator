@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TV Emulator</title>
-  <meta name="description" content="A Windows stand-in for smart TV browsers: Tizen, webOS, VIDAA, SmartCast, Saphi, NetTV, Titan OS, HbbTV, my Home Screen, Fire TV, and Vewd. Era-matched engines for the page, Edge for video and DRM.">
+  <meta name="description" content="A Windows stand-in for smart TV browsers: Tizen, webOS, VIDAA, SmartCast, Saphi, NetTV, Titan OS, HbbTV, my Home Screen, Fire TV, and Vewd. Era-matched engines for the page, Edge for video, Widevine, and PlayReady.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +16,7 @@
     <div class="hero-copy">
       <p class="brand">TV Emulator</p>
       <h1>Run a television browser on Windows.</h1>
-      <p class="lede">Nineteen unofficial compatibility profiles across Tizen, webOS, VIDAA, SmartCast, Saphi, NetTV, Titan OS, HbbTV, my Home Screen, Fire TV, and Vewd — each on the engine that year shipped, with Edge carrying codecs and DRM where the old browser cannot.</p>
+      <p class="lede">Twenty unofficial compatibility profiles across Tizen, webOS, VIDAA, SmartCast, Saphi, NetTV, Titan OS, HbbTV, my Home Screen, Fire TV, and Vewd — each on the engine that year shipped, with Edge carrying codecs, Widevine, and PlayReady where the old browser cannot.</p>
       <p class="cta">
         <a class="cta-primary" href="https://github.com/jacek-korzemski/TV-Emulator">View source</a>
         <a class="cta-secondary" href="https://github.com/jacek-korzemski/TV-Emulator#get-started">Get started</a>
@@ -40,11 +40,16 @@
           <thead>
             <tr>
               <th scope="col">Profile</th>
-              <th scope="col">Chromium</th>
+              <th scope="col">Engine</th>
               <th scope="col">Picture</th>
             </tr>
           </thead>
           <tbody>
+            <tr>
+              <th scope="row">Tizen 2.4 (2016)</th>
+              <td>WebKit 538.1</td>
+              <td>avplay</td>
+            </tr>
             <tr>
               <th scope="row">Tizen 3.0 (2017)</th>
               <td>47</td>
@@ -137,16 +142,16 @@
 
     <section id="how">
       <h2>How the picture is made</h2>
-      <p class="section-lede">The page and the video do not share a browser. Old TV Chromium cannot play the streams these apps expect.</p>
+      <p class="section-lede">The page and the video do not share a browser. Old TV browsers cannot play the streams these apps expect.</p>
       <div class="stack" aria-hidden="true">
-        <div class="plane plane-page">Chromium — the TV page</div>
+        <div class="plane plane-page">Page engine — the TV page</div>
         <div class="plane plane-video">Edge — codecs, PlayReady, Widevine</div>
       </div>
       <div class="prose">
         <p>The host is a Windows app. It serves your folder, or loads an <code>http(s)</code> address, and injects a small platform shim. That shim provides the device API the page already calls (<code>tizen</code>, <code>webapis</code>, <code>webOS</code>, and the other profile globals) plus the remote key codes for that profile. The window is a 16:9 stage. Where the page punches a hole in a key color, the video layer shows through, the same idea as a television’s video plane under the HTML.</p>
-        <p><strong>Tizen uses Chromium plus avplay.</strong> <code>webapis.avplay</code> is the native player on Tizen. The pinned Chromium build has no usable H.264, AAC, or PlayReady. Calls are forwarded to a second window: WebView2, which is current Edge. Edge has the codecs and Microsoft PlayReady, so Shaka Player there can take a clear or PlayReady DASH stream. The Chromium window stays on top and owns clicks. The Edge window sits behind it and only appears through the key color.</p>
-        <p><strong>webOS uses Chromium plus Edge.</strong> webOS 4 plays through the HTML engine and Widevine, not avplay. Chromium 53 has neither a Widevine CDM nor H.264. The page still chooses variants and pulls segments. Edge owns the real Widevine session and the decoder. The video element in the old page is only a clock. PlayReady stays on the Tizen path and is not used here. VIDAA, SmartCast, Saphi, HbbTV, Fire TV, and Vewd use that same Edge path. HbbTV <code>video/broadcast</code> is a shim object, not a tuner.</p>
-        <p><strong>Titan OS and Fire TV play through Edge.</strong> Chrome for Testing 122 has no Widevine CDM, so both open the video plane. A Fire TV page recognizes the set from an <code>AmazonWebAppPlatform</code> user agent, and Back is keyCode 4. my Home Screen from 2016 runs in Firefox 44. That Firefox has no Chrome DevTools Protocol, so the live preview stays empty while the session log still works. Vewd is Chromium 47 with an OMI user agent, because the Vewd TV binary is not public.</p>
+        <p><strong>Tizen uses the page engine plus avplay.</strong> <code>webapis.avplay</code> is the native player on Tizen. Calls are forwarded to a second window: WebView2, which is current Edge. Edge has the codecs, Widevine, and PlayReady. Tizen 2.4 (QtWebKit 5.5) and Tizen 3.0 play clear and PlayReady DASH. From Tizen 4.0 on, avplay also takes Widevine, and a page that uses HTML5 video gets the same two DRM systems through the Edge plane. The page window stays on top and owns clicks. The Edge window sits behind it and only appears through the key color.</p>
+        <p><strong>webOS, VIDAA, SmartCast, Saphi, Titan, Fire TV, Vewd, and my Home Screen use the page engine plus Edge.</strong> webOS 4 plays through the HTML engine, not avplay. Chromium 53 has neither a CDM nor H.264. The page still chooses variants and pulls segments. Edge owns the real Widevine or PlayReady session and the decoder. The video element in the old page is only a clock. Those profiles all report both DRM systems. HbbTV <code>video/broadcast</code> is a shim object, not a tuner, and it opens the stream on the same plane.</p>
+        <p><strong>Tizen 2.4, Titan OS, Fire TV, and my Home Screen.</strong> Tizen 2.4 runs in a frameless QtWebKit 5.5 host (AppleWebKit/538.1) with no toolbar and no infobars. That host has no Chrome DevTools Protocol, so its live preview stays empty while page <code>console</code> lines still reach the session log. Chrome for Testing 122 has no Widevine CDM, so Titan OS and Fire TV open the video plane. A Fire TV page recognizes the set from an <code>AmazonWebAppPlatform</code> user agent, and Back is keyCode 4. my Home Screen from 2016 runs in Firefox 44 and has the same empty live preview. Vewd is Chromium 47 with an OMI user agent, because the Vewd TV binary is not public.</p>
         <p>RAM and CPU numbers stored on a profile are labels only. The app does not throttle the machine to match a television.</p>
       </div>
     </section>
@@ -156,7 +161,7 @@
       <p class="section-lede"><code>samples/universal-vod</code> is a remote-driven catalog you can open on any shipped set.</p>
       <div class="prose">
         <p>Home is a horizontal row of titles. Enter opens a detail screen; Enter again starts playback; arrows seek; the red key or Back stops. The page reads the active profile and chooses a backend: <strong>AVPlay</strong> on Tizen, <strong>Shaka Player</strong> on every other profile.</p>
-        <p>Three public DASH demos sit in the catalog. A clear stream plays on both backends. PlayReady is for the Tizen / AVPlay path. Widevine is for the Shaka / HTML video path. Titles the current set cannot decrypt stay visible but marked unavailable, so you can see which DRM belongs where.</p>
+        <p>Three public DASH demos sit in the catalog. A clear stream plays on both backends. PlayReady and Widevine play on every profile that reports that system: Tizen 4.0 and later, and every Edge profile, play both. Tizen 2.4 and 3.0 play PlayReady only. Titles the current set cannot decrypt stay visible but marked unavailable.</p>
       </div>
     </section>
 

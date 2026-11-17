@@ -174,12 +174,17 @@ function createShakaBackend(video, hooks) {
             }
             hooks.onBuffering(!!(event && event.buffering));
           });
+          var servers = {};
           if (item.drm === "widevine" && item.license) {
+            servers["com.widevine.alpha"] = item.license;
+          }
+          if (item.drm === "playready" && item.license) {
+            servers["com.microsoft.playready"] = item.license;
+          }
+          if (servers["com.widevine.alpha"] || servers["com.microsoft.playready"]) {
             player.configure({
               drm: {
-                servers: {
-                  "com.widevine.alpha": item.license
-                }
+                servers: servers
               }
             });
           }

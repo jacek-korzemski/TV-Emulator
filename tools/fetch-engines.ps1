@@ -46,6 +46,7 @@ foreach ($build in $builds) {
     $dest = Join-Path $repo "engines\$($build.id)"
     $binary = if ($build.kind -eq 'electron') { 'electron.exe' }
         elseif ($build.kind -eq 'firefox') { 'firefox.exe' }
+        elseif ($build.kind -eq 'webkit') { 'tv-webkit.exe' }
         else { 'chrome.exe' }
     $existing = Get-ChildItem $dest -Recurse -Filter $binary -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($existing) {
@@ -58,7 +59,14 @@ foreach ($build in $builds) {
     if (-not (Test-Path $payload) -or (Get-Item $payload).Length -lt 1000000) {
         Write-Output "GET $($build.id)"
         & curl.exe -L --fail --retry 3 --retry-delay 2 -o $payload $build.archive
-        if ($LASTEXITCODE -ne 0) { throw "Pobieranie $($build.id) nie powiodło się." }
+        if ($LASTEXITCODE -ne 0) {
+            if (Test-Path $payload) { Remove-Item $payload -Force }
+            if ($build.kind -eq 'webkit') {
+                Write-Output "SKIP $($build.id) - paczki nie ma pod $($build.archive). Zbuduj tools\webkit-host\build.ps1 albo opublikuj wydanie webkit-host-v1."
+                continue
+            }
+            throw "Pobieranie $($build.id) nie powiodło się."
+        }
     }
 
     Write-Output "UNZIP $($build.id)"

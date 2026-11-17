@@ -4,6 +4,7 @@
   "platform": "hbbtv",
   "engine": "chromium-53",
   "player": "edge",
+  "drm": ["playready", "widevine"],
   "userAgent": "Mozilla/5.0 (Linux armv7l) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36 HbbTV/1.5.1 (+DRM;Panasonic;TX-55DX900;3.012;0.016;)",
   "viewport": { "width": 1920, "height": 1080 },
   "platformVersion": "1.5.1",

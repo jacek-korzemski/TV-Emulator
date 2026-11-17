@@ -4,6 +4,7 @@
   "platform": "sony",
   "engine": "chromium-47",
   "player": "edge",
+  "drm": ["playready", "widevine"],
   "userAgent": "Mozilla/5.0 (Linux armv7l) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.111 Safari/537.36 OPR/32.0.2128.0 OMI/4.6.12.48.Sony.13 Model/Sony-KDL-55W800C",
   "viewport": { "width": 1920, "height": 1080 },
   "platformVersion": "4.6",

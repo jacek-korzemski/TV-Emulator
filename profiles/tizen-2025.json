@@ -4,6 +4,7 @@
   "platform": "tizen",
   "engine": "chrome-120",
   "player": "avplay",
+  "drm": ["playready", "widevine"],
   "userAgent": "Mozilla/5.0 (SMART-TV; LINUX; Tizen 9.0) AppleWebKit/537.36 (KHTML, like Gecko) 120.0.6099.5/9.0 TV Safari/537.36",
   "viewport": { "width": 1920, "height": 1080 },
   "platformVersion": "9.0",

@@ -9,6 +9,7 @@ public sealed class EngineSession : IDisposable
     private bool _stopRequested;
     private int _redraws;
     private int _fits;
+    private bool _captureOutput;
 
     private const int MaxFits = 6;
 
@@ -22,6 +23,8 @@ public sealed class EngineSession : IDisposable
     /// <summary>The page area covers the stage exactly, or fitting gave up.</summary>
     public bool Fitted { get; private set; }
     public event Action? Exited;
+
+    public event Action<string>? Output;
 
     public bool HasExited
     {
@@ -41,8 +44,9 @@ public sealed class EngineSession : IDisposable
         }
     }
 
-    public void Start(string exe, IReadOnlyList<string> arguments, int? cpuPercent = null, int? memoryMb = null)
+    public void Start(string exe, IReadOnlyList<string> arguments, int? cpuPercent = null, int? memoryMb = null, bool captureOutput = false)
     {
+        _captureOutput = captureOutput;
         var cpu = cpuPercent is >= 1 and <= 100 ? cpuPercent : null;
         var memory = memoryMb is >= 1 and <= TvPower.MaxMemoryMb ? memoryMb : null;
         if (cpu is null && memory is null)
@@ -52,13 +56,41 @@ public sealed class EngineSession : IDisposable
         }
 
         var job = ProcessBudget.Create(cpu, memory);
+        Process? captured = null;
         try
         {
-            Watch(ProcessBudget.Start(exe, arguments, EngineEnvironment(), job));
+            if (captureOutput)
+            {
+                captured = StartFree(exe, arguments);
+                ProcessBudget.Attach(job, captured);
+                Watch(captured);
+            }
+            else
+            {
+                Watch(ProcessBudget.Start(exe, arguments, EngineEnvironment(), job));
+            }
+
             _job = job;
         }
         catch
         {
+            if (captured is not null)
+            {
+                try
+                {
+                    if (!captured.HasExited)
+                        captured.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException)
+                {
+                }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                }
+
+                captured.Dispose();
+            }
+
             job.Dispose();
             throw;
         }
@@ -71,6 +103,13 @@ public sealed class EngineSession : IDisposable
             WorkingDirectory = Path.GetDirectoryName(exe) ?? "",
             UseShellExecute = false
         };
+        if (_captureOutput)
+        {
+            start.RedirectStandardOutput = true;
+            start.RedirectStandardError = true;
+            start.StandardOutputEncoding = System.Text.Encoding.UTF8;
+            start.StandardErrorEncoding = System.Text.Encoding.UTF8;
+        }
         foreach (var argument in arguments)
             start.ArgumentList.Add(argument);
         foreach (var pair in EngineEnvironment())
@@ -97,6 +136,19 @@ public sealed class EngineSession : IDisposable
             if (!_stopRequested)
                 Exited?.Invoke();
         };
+        if (_captureOutput)
+        {
+            process.OutputDataReceived += (_, args) => EmitOutput(args.Data);
+            process.ErrorDataReceived += (_, args) => EmitOutput(args.Data);
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+        }
+    }
+
+    private void EmitOutput(string? line)
+    {
+        if (!string.IsNullOrEmpty(line))
+            Output?.Invoke(line);
     }
 
     public bool TryAttach(PixelRect rect)

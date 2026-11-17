@@ -293,7 +293,8 @@ public static class NativeMethods
             _ = GetClassName(hwnd, className, className.Capacity);
             var cls = className.ToString();
             if (!cls.StartsWith("Chrome_WidgetWin", StringComparison.Ordinal)
-                && !cls.StartsWith("MozillaWindowClass", StringComparison.Ordinal))
+                && !cls.StartsWith("MozillaWindowClass", StringComparison.Ordinal)
+                && !(cls.StartsWith("Qt", StringComparison.Ordinal) && cls.Contains("QWindow", StringComparison.Ordinal)))
                 return true;
 
             if (!GetWindowRect(hwnd, out var rect))

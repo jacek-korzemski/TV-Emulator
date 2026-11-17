@@ -250,7 +250,7 @@ public partial class MainWindow : Window
             Directory.CreateDirectory(userData);
             if (string.Equals(engine.Kind, "firefox", StringComparison.Ordinal))
                 FirefoxProfile.Prepare(userData, profile.UserAgent);
-            else if (!string.Equals(engine.Kind, "electron", StringComparison.Ordinal))
+            else if (engine.IsChromiumFamily)
                 ChromeProfile.Prepare(userData);
 
             _server = new AppServer();
@@ -310,16 +310,14 @@ public partial class MainWindow : Window
             _debugServer?.Hub.BeginSession(profile.Id, profile.Label, profile.Engine, debug, _sessionLog?.FilePath, _plane is not null);
             if (compare)
                 _debugServer?.Hub.BeginCompare(DirectoryBox.Text.Trim(), DirectoryBoxB.Text.Trim());
-            if (debug && _debugServer is not null && !string.Equals(engine.Kind, "firefox", StringComparison.Ordinal))
+            if (debug && _debugServer is not null && engine.IsChromiumFamily)
             {
                 _cdp = CdpWatcher.Start(_debugServer.Hub, _plane is not null);
                 _cdp.EngineLost += () => Dispatcher.BeginInvoke(() =>
                     EndSession("Silnik przeglądarki padł. Sesja zamknięta, pasek zadań wrócił."));
             }
             _server.HoldPages();
-            var gpu = _plane is not null
-                && !string.Equals(engine.Kind, "firefox", StringComparison.Ordinal)
-                && !string.Equals(engine.Kind, "electron", StringComparison.Ordinal);
+            var gpu = _plane is not null && engine.IsChromiumFamily;
             StartEngine(gpu);
 
             EnterStage(monitor);
@@ -501,7 +499,17 @@ public partial class MainWindow : Window
             ColorKey = gpuChroma || _plane is null ? null : VideoPlane.KeyColor
         };
         _engine.Exited += () => Dispatcher.BeginInvoke(OnEngineExited);
-        _engine.Start(exe, arguments, _launchCpu, _launchMemory);
+        var captureConsole = string.Equals(engine.Kind, "webkit", StringComparison.Ordinal);
+        if (captureConsole)
+        {
+            _engine.Output += line =>
+            {
+                _sessionLog?.Write("webkit " + line);
+                _debugServer?.Hub.AddLog("webkit " + line);
+            };
+        }
+
+        _engine.Start(exe, arguments, _launchCpu, _launchMemory, captureConsole);
         if (gpuChroma)
             _sessionLog?.Write("chroma gpu milestone=" + engine.Milestone);
     }
@@ -699,9 +707,7 @@ public partial class MainWindow : Window
     private static string ProfileDetail(TvProfile profile, IReadOnlyList<EngineBuild> engines)
     {
         var engine = engines.FirstOrDefault(item => item.Id == profile.Engine);
-        var chromium = engine is null ? profile.Engine : "Chromium " + engine.Milestone;
-        var line = string.IsNullOrWhiteSpace(profile.Player) ? chromium : chromium + " · " + profile.Player;
-        return "tryb zgodności · " + line;
+        return Catalog.CompatibilityLine(profile, engine);
     }
 
     private sealed class ProfileChoice(TvProfile profile, string detail)

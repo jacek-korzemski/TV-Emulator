@@ -91,9 +91,7 @@ public partial class SettingsWindow : Window
     private static string Detail(TvProfile profile, IReadOnlyList<EngineBuild> engines)
     {
         var engine = engines.FirstOrDefault(item => item.Id == profile.Engine);
-        var name = engine is null ? profile.Engine : "Chromium " + engine.Milestone;
-        var line = string.IsNullOrWhiteSpace(profile.Player) ? name : name + " · " + profile.Player;
-        return "tryb zgodności · " + line;
+        return Catalog.CompatibilityLine(profile, engine);
     }
 
     private sealed class ProfileToggle(string id, string label, string detail, bool visible)

@@ -616,6 +616,7 @@ public sealed class AppServer : IDisposable
         {
             platform = profile.Platform,
             player = profile.Player,
+            drm = profile.Drm,
             platformVersion = profile.PlatformVersion,
             userAgent = profile.UserAgent,
             keys = profile.Keys,

@@ -7,6 +7,10 @@ public sealed class TvProfile
     public string Platform { get; set; } = "";
     public string Engine { get; set; } = "";
     public string Player { get; set; } = "";
+
+    /// <summary>Key systems this set reports: "playready", "widevine".</summary>
+    public List<string>? Drm { get; set; }
+
     public string UserAgent { get; set; } = "";
     public Viewport Viewport { get; set; } = new();
     public string PlatformVersion { get; set; } = "";
@@ -63,4 +67,9 @@ public sealed class EngineBuild
     public string Kind { get; set; } = "chromium";
     public string ElectronVersion { get; set; } = "";
     public List<string> Args { get; set; } = new();
+
+    public bool IsChromiumFamily =>
+        !string.Equals(Kind, "electron", StringComparison.Ordinal)
+        && !string.Equals(Kind, "firefox", StringComparison.Ordinal)
+        && !string.Equals(Kind, "webkit", StringComparison.Ordinal);
 }

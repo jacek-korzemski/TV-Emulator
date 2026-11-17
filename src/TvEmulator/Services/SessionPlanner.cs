@@ -8,9 +8,7 @@ public static class SessionPlanner
     public const string BootPath = "/__emulator/boot.html";
     public const string BootReportPath = "/__emulator/boot";
 
-    public static bool UsesBootGate(EngineBuild engine) =>
-        !string.Equals(engine.Kind, "electron", StringComparison.Ordinal)
-        && !string.Equals(engine.Kind, "firefox", StringComparison.Ordinal);
+    public static bool UsesBootGate(EngineBuild engine) => engine.IsChromiumFamily;
 
     public static IReadOnlyList<string> Arguments(
         EngineBuild engine,
@@ -73,6 +71,18 @@ public static class SessionPlanner
             ];
         }
 
+        if (string.Equals(engine.Kind, "webkit", StringComparison.Ordinal))
+        {
+            return
+            [
+                "--geometry=" + rect.X + "," + rect.Y + "," + rect.Width + "," + rect.Height,
+                "--scale=" + scaleText,
+                "--user-agent=" + profile.UserAgent,
+                "--user-data-dir=" + userDataDir,
+                url
+            ];
+        }
+
         var args = new List<string>
         {
             "--user-data-dir=" + userDataDir,
@@ -98,9 +108,7 @@ public static class SessionPlanner
         if (engine.Milestone < 76)
             args.Add("--disable-infobars");
 
-        var gpu = gpuChroma
-            && !string.Equals(engine.Kind, "electron", StringComparison.Ordinal)
-            && !string.Equals(engine.Kind, "firefox", StringComparison.Ordinal);
+        var gpu = gpuChroma && engine.IsChromiumFamily;
         if (engine.Args is not null)
         {
             foreach (var argument in engine.Args)

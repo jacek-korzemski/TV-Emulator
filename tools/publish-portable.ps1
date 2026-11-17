@@ -60,7 +60,7 @@ Copy-Item (Join-Path $repo 'engines\builds.json') (Join-Path $enginesDest 'build
 
 if (-not $SkipEngines) {
     $found = @()
-    foreach ($pattern in @('chromium-*', 'chrome-*', 'firefox-*')) {
+    foreach ($pattern in @('chromium-*', 'chrome-*', 'firefox-*', 'webkit-*')) {
         $found += @(Get-ChildItem (Join-Path $repo 'engines') -Directory -Filter $pattern -ErrorAction SilentlyContinue)
     }
     if ($found.Count -eq 0) {

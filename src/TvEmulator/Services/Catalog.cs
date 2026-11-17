@@ -34,6 +34,9 @@ public static class Catalog
         if (string.Equals(engine.Kind, "firefox", StringComparison.Ordinal))
             return Directory.EnumerateFiles(dir, "firefox.exe", SearchOption.AllDirectories).FirstOrDefault();
 
+        if (string.Equals(engine.Kind, "webkit", StringComparison.Ordinal))
+            return Directory.EnumerateFiles(dir, "tv-webkit.exe", SearchOption.AllDirectories).FirstOrDefault();
+
         foreach (var relative in new[] { "chrome-win32\\chrome.exe", "chrome-win\\chrome.exe", "chrome-win64\\chrome.exe" })
         {
             var candidate = Path.Combine(dir, relative);
@@ -46,4 +49,22 @@ public static class Catalog
 
     public static string? LocateChrome(string root, string engineId) =>
         LocateEngine(root, new EngineBuild { Id = engineId, Kind = "chromium" });
+
+    public static string EngineName(EngineBuild? engine, string fallback)
+    {
+        if (engine is null)
+            return fallback;
+        if (string.Equals(engine.Kind, "webkit", StringComparison.Ordinal))
+            return "WebKit 538.1";
+        if (string.Equals(engine.Kind, "firefox", StringComparison.Ordinal))
+            return "Firefox " + engine.Milestone;
+        return "Chromium " + engine.Milestone;
+    }
+
+    public static string CompatibilityLine(TvProfile profile, EngineBuild? engine)
+    {
+        var name = EngineName(engine, profile.Engine);
+        var line = string.IsNullOrWhiteSpace(profile.Player) ? name : name + " · " + profile.Player;
+        return "tryb zgodności · " + line;
+    }
 }

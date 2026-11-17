@@ -43,6 +43,27 @@ public class AvplayTests
     }
 
     [Fact]
+    public void WidevineLicenseBytesStayOutOfTheTrace()
+    {
+        var bridge = new AvplayBridge();
+        var lines = new List<string>();
+        bridge.Trace += lines.Add;
+        var command = new JsonObject
+        {
+            ["cmd"] = "drm",
+            ["drmType"] = "WIDEVINE_CDM",
+            ["operation"] = "widevine_license_data",
+            ["data"] = "widevine-license-secret"
+        };
+
+        Assert.True((bool)bridge.Accept(command.ToJsonString())["ok"]!);
+
+        var line = Assert.Single(lines);
+        Assert.Contains("widevine_license_data", line);
+        Assert.DoesNotContain("widevine-license-secret", line);
+    }
+
+    [Fact]
     public void WaitReturnsOnlyNewerEventsAndAFreshPageStartsAtTheHead()
     {
         var bridge = new AvplayBridge();
@@ -248,6 +269,30 @@ public class AvplayTests
         Assert.Contains("pendingMseTime = target", seekMse);
         Assert.DoesNotContain("setTimeout", seekMse);
         Assert.Contains("played.catch(() => {})", plane);
+    }
+
+    [Fact]
+    public void Tizen2018InstallsHtmlPlaybackAndOlderTizenDoesNot()
+    {
+        var root = RepoPaths.Root();
+        var shim = File.ReadAllText(Path.Combine(root, "shims", "platform.js"));
+        var plane = File.ReadAllText(Path.Combine(root, "shims", "videoplane.js"));
+
+        Assert.Contains("function tizenHtmlPlayback()", shim);
+        Assert.Contains("version >= 4", shim);
+        Assert.Contains("function wantsEdgePlayback()", shim);
+        Assert.Contains("function profileHasDrm(", shim);
+        Assert.Contains("function avplayDrmKind(", shim);
+        Assert.Contains("WIDEVINE_CDM", plane);
+        Assert.Contains("widevine_license_data", plane);
+        Assert.Contains("tv-avplay-license", plane);
+        Assert.Contains("name: 'Challenge'", plane);
+        Assert.Contains("const releaseForAvplay", plane);
+        var mediaOpenAt = plane.IndexOf("if (op === 'open')", StringComparison.Ordinal);
+        Assert.True(mediaOpenAt > 0);
+        var mediaOpen = plane.Substring(mediaOpenAt, 120);
+        Assert.Contains("await destroyPlayer();", mediaOpen);
+        Assert.Contains("await openMse();", mediaOpen);
     }
 
     [Fact]

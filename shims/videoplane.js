@@ -1,6 +1,6 @@
 /*
  * Video plane behind the Tizen page. It runs in WebView2 (Edge), not in the pinned Chromium,
- * because only Edge has H.264/AAC and PlayReady on Windows. The host relays webapis.avplay
+ * because only Edge has H.264/AAC, PlayReady, and Widevine on Windows. The host relays webapis.avplay
  * commands here and forwards every message posted back to the page as an AVPlay event.
  *
  * Edge rejects a PlayReady license at MediaKeySession.update (2154840069 / 0x80704005) when
@@ -25,12 +25,20 @@
   const RECOMMENDATION = 'com.microsoft.playready.recommendation';
   const SOFTWARE = 'com.microsoft.playready.software';
   const PLAYREADY = 'com.microsoft.playready';
+  const WIDEVINE = 'com.widevine.alpha';
+  const LICENSE_SCHEME = 'tv-avplay-license';
 
   let player = null;
   let gen = 0;
   let url = '';
   let licenseServer = '';
   let customData = '';
+  let drmFamily = 'playready';
+  let widevineAppHandled = false;
+  let widevineHeaders = {};
+  let widevineSchemeInstalled = false;
+  const pendingLicenses = [];
+  const licenseWaiters = [];
   let prepared = false;
   let announcedPrepared = false;
   let wantPlaying = false;
@@ -629,7 +637,7 @@
   };
 
   const armModes = () => {
-    modeQueue = initialModes();
+    modeQueue = drmFamily === 'widevine' ? ['widevine'] : initialModes();
     modeIndex = 0;
     soapRetried = false;
     soapCustomData = false;
@@ -639,7 +647,107 @@
     scheduledGeneration = -1;
   };
 
+  const activeDrmType = () => (drmFamily === 'widevine' ? 'WIDEVINE_CDM' : 'PLAYREADY');
+
+  const failLicenses = () => {
+    pendingLicenses.length = 0;
+    const waiting = licenseWaiters.splice(0, licenseWaiters.length);
+    const error = Object.assign(new Error('cancelled'), { name: 'AbortError' });
+    waiting.forEach((waiter) => waiter.reject(error));
+  };
+
+  const resetDrm = () => {
+    drmFamily = 'playready';
+    widevineAppHandled = false;
+    widevineHeaders = {};
+    licenseServer = '';
+    customData = '';
+    failLicenses();
+  };
+
+  const parseHttpHeader = (value) => {
+    const headers = {};
+    if (!value) {
+      return headers;
+    }
+    if (typeof value === 'object') {
+      Object.keys(value).forEach((key) => {
+        headers[key] = String(value[key]);
+      });
+      return headers;
+    }
+    String(value).split(/\r?\n/).forEach((line) => {
+      const at = line.indexOf(':');
+      if (at > 0) {
+        headers[line.slice(0, at).trim()] = line.slice(at + 1).trim();
+      }
+    });
+    return headers;
+  };
+
+  const licenseBytes = (data) => {
+    const text = data == null ? '' : String(data);
+    const compact = text.replace(/\s+/g, '');
+    if (!compact) {
+      return new Uint8Array();
+    }
+    try {
+      return bytesFromBase64(compact);
+    } catch (ignore) {
+      const out = new Uint8Array(text.length);
+      for (let i = 0; i < text.length; i++) {
+        out[i] = text.charCodeAt(i) & 0xff;
+      }
+      return out;
+    }
+  };
+
+  // Samsung AVPlay: Initialize makes the player hand the challenge to the page
+  // (ondrmevent name "Challenge") and wait for widevine_license_data. SetProperties
+  // with LicenseServer lets the player POST the challenge itself.
+  const installWidevineScheme = () => {
+    if (widevineSchemeInstalled) {
+      return;
+    }
+    widevineSchemeInstalled = true;
+    const asOperation = (promise) => {
+      if (shaka.util.AbortableOperation && shaka.util.AbortableOperation.notAbortable) {
+        return shaka.util.AbortableOperation.notAbortable(promise);
+      }
+      return promise;
+    };
+    NetworkingEngine.registerScheme(LICENSE_SCHEME, (uri, request) => {
+      const body = request && request.body ? request.body : new Uint8Array();
+      emit('drm', {
+        drmType: 'WIDEVINE_CDM',
+        data: { name: 'Challenge', challenge: base64FromBytes(body) }
+      });
+      const promise = new Promise((resolve, reject) => {
+        const deliver = (bytes) => {
+          const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+          const copy = view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
+          resolve({
+            uri,
+            originalUri: uri,
+            data: copy,
+            headers: { 'content-type': 'application/octet-stream' },
+            status: 200
+          });
+        };
+        if (pendingLicenses.length) {
+          deliver(pendingLicenses.shift());
+          return;
+        }
+        licenseWaiters.push({ resolve: deliver, reject });
+      });
+      return asOperation(promise);
+    });
+  };
+
   const advanceMode = () => {
+    if (drmFamily === 'widevine') {
+      return false;
+    }
     if (licensePersistence === 'NonPersistent') {
       const preferred = modeQueue.indexOf('recommendation-temporary');
       if (preferred > modeIndex) {
@@ -673,6 +781,10 @@
   };
 
   const applyMode = (mode) => {
+    if (mode === 'widevine') {
+      emePersistence = 'unchanged';
+      return;
+    }
     if (mode === 'recommendation-temporary' || mode === 'software-temporary') {
       emePersistence = 'temporary';
     } else if (mode === 'recommendation-persistent' || mode === 'software-persistent') {
@@ -683,6 +795,19 @@
   };
 
   const drmConfig = (mode) => {
+    if (drmFamily === 'widevine') {
+      const server = widevineAppHandled
+        ? LICENSE_SCHEME + '://local'
+        : (licenseServer || '');
+      const servers = {};
+      if (server) {
+        servers[WIDEVINE] = server;
+      }
+      return {
+        servers,
+        advanced: {}
+      };
+    }
     const servers = licenseServer ? {
       [PLAYREADY]: licenseServer,
       [RECOMMENDATION]: licenseServer,
@@ -728,7 +853,7 @@
 
   const reportFinalDrm = (error) => {
     const message = describe(error);
-    emit('drm', { drmType: 'PLAYREADY', data: { name: 'DrmError', message } });
+    emit('drm', { drmType: activeDrmType(), data: { name: 'DrmError', message } });
     if (announcedPrepared) {
       emit('error', { code: 'PLAYER_ERROR_DRM_NO_LICENSE', message });
     } else {
@@ -771,6 +896,7 @@
 
   const destroyPlayer = async () => {
     playerGeneration += 1;
+    failLicenses();
     dashAudioSets = null;
     if (failLoad) {
       const reject = failLoad;
@@ -797,6 +923,15 @@
     const generation = playerGeneration;
     instance.getNetworkingEngine().registerRequestFilter((type, request) => {
       if (type !== NetworkingEngine.RequestType.LICENSE) {
+        return;
+      }
+      if (drmFamily === 'widevine') {
+        if (customData) {
+          request.headers.CustomData = customData;
+        }
+        Object.keys(widevineHeaders).forEach((name) => {
+          request.headers[name] = widevineHeaders[name];
+        });
         return;
       }
       if (customData) {
@@ -827,7 +962,7 @@
         licensePersistence = persistence;
       }
       emit('drm', {
-        drmType: 'PLAYREADY',
+        drmType: activeDrmType(),
         data: { name: 'LicenseResponse', status: response.status || 200, persistence }
       });
     });
@@ -847,7 +982,7 @@
         return;
       }
       if (error && error.category === shaka.util.Error.Category.DRM) {
-        emit('drm', { drmType: 'PLAYREADY', data: { name: 'DrmError', message: describe(error) } });
+        emit('drm', { drmType: activeDrmType(), data: { name: 'DrmError', message: describe(error) } });
       }
       if (prepared || announcedPrepared) {
         emit('error', { code: avplayError(error), message: describe(error) });
@@ -888,7 +1023,10 @@
       return;
     }
     applyMode(mode);
-    emit('log', { text: 'playready ' + mode + (soapCustomData ? ' soap' : '') });
+    if (widevineAppHandled) {
+      installWidevineScheme();
+    }
+    emit('log', { text: (drmFamily === 'widevine' ? 'widevine' : 'playready') + ' ' + mode + (soapCustomData ? ' soap' : '') });
     await destroyPlayer();
     if (token !== activeToken) {
       return;
@@ -1349,14 +1487,20 @@
     emit('eme-updated', { id });
   };
 
+  const releaseForAvplay = async () => {
+    if (mseMode || mseSource) {
+      await closeMse(false);
+    }
+    await destroyPlayer();
+  };
+
   const handlers = {
     async open(command) {
       activeToken += 1;
-      await destroyPlayer();
+      await releaseForAvplay();
+      resetDrm();
       gen = command.gen;
       url = command.url || '';
-      licenseServer = '';
-      customData = '';
       dashAudioSets = null;
       wantPlaying = false;
       announcedPrepared = false;
@@ -1368,7 +1512,8 @@
       wantPlaying = false;
       announcedPrepared = false;
       clearShades();
-      await destroyPlayer();
+      await releaseForAvplay();
+      resetDrm();
       url = '';
     },
     async reset() {
@@ -1376,20 +1521,59 @@
       wantPlaying = false;
       announcedPrepared = false;
       clearShades();
-      await destroyPlayer();
+      await releaseForAvplay();
+      resetDrm();
       url = '';
     },
     async stop() {
       activeToken += 1;
       wantPlaying = false;
       announcedPrepared = false;
-      await destroyPlayer();
+      await releaseForAvplay();
     },
     async drm(command) {
-      if (command.drmType === 'PLAYREADY' && command.operation === 'SetProperties') {
+      const drmType = String(command.drmType || '');
+      const operation = String(command.operation || '');
+      const widevine = drmType === 'WIDEVINE_CDM' || drmType === 'WIDEVINE';
+      if (drmType === 'PLAYREADY' && operation === 'SetProperties') {
+        drmFamily = 'playready';
+        widevineAppHandled = false;
         const props = parseDrm(command.data);
         licenseServer = props.LicenseServer || '';
         customData = props.CustomData == null ? '' : String(props.CustomData);
+        widevineHeaders = {};
+        return;
+      }
+      if (!widevine) {
+        return;
+      }
+      drmFamily = 'widevine';
+      if (operation === 'SetProperties') {
+        const props = parseDrm(command.data);
+        if (props.LicenseServer) {
+          licenseServer = props.LicenseServer;
+        }
+        if (props.CustomData != null) {
+          customData = String(props.CustomData);
+        }
+        if (props.HttpHeader != null) {
+          widevineHeaders = parseHttpHeader(props.HttpHeader);
+        }
+        return;
+      }
+      if (operation === 'Initialize') {
+        widevineAppHandled = true;
+        installWidevineScheme();
+        return;
+      }
+      if (operation === 'widevine_license_data') {
+        const bytes = licenseBytes(command.data);
+        const waiter = licenseWaiters.shift();
+        if (waiter) {
+          waiter.resolve(bytes);
+        } else {
+          pendingLicenses.push(bytes);
+        }
       }
     },
     async prepare() {
@@ -1473,6 +1657,7 @@
       const op = command.op || '';
       const id = String(command.id || '');
       if (op === 'open') {
+        await destroyPlayer();
         await openMse();
         return;
       }

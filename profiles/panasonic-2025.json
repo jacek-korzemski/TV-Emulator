@@ -4,6 +4,7 @@
   "platform": "firetv",
   "engine": "chrome-122",
   "player": "edge",
+  "drm": ["playready", "widevine"],
   "userAgent": "Mozilla/5.0 (Linux; Android 11; AFTEMU25 Build/RS8180) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.128 Mobile Safari/537.36 cordova-amazon-fireos/3.4.0 AmazonWebAppPlatform/3.4.0;2.0",
   "viewport": { "width": 1920, "height": 1080 },
   "platformVersion": "8",

@@ -4,6 +4,7 @@
   "platform": "saphi",
   "engine": "chromium-49",
   "player": "edge",
+  "drm": ["playready", "widevine"],
   "userAgent": "Mozilla/5.0 (Linux armv7l) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.112 Safari/537.36 OPR/36.0.2128.0 OMI/4.8.0.129.Driver6.32 , _TV_MT5806/091.003.225.001 (Philips, PUT6604, wireless) CE-HTML/1.0 NETTV/4.6.0.2 SignOn/2.0 SmartTvA/5.0.0 WH1.0 en",
   "viewport": { "width": 1920, "height": 1080 },
   "platformVersion": "4.6",

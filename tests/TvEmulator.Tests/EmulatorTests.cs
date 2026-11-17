@@ -145,6 +145,7 @@ public class EmulatorTests
     {
         var root = RepoPaths.Root();
         var profiles = Catalog.LoadProfiles(root);
+        Assert.Contains(profiles, profile => profile.Id == "tizen-2016" && profile.Engine == "webkit-538" && profile.PlatformVersion == "2.4" && profile.Player == "avplay");
         Assert.Contains(profiles, profile => profile.Id == "tizen-2017" && profile.Engine == "chromium-47" && profile.PlatformVersion == "3.0" && profile.Player == "avplay");
         Assert.Contains(profiles, profile => profile.Id == "webos-4" && profile.Engine == "chromium-53" && profile.Player == "edge");
         Assert.Contains(profiles, profile => profile.Id == "tizen-2018" && profile.Engine == "chromium-56" && profile.Player == "avplay");
@@ -166,17 +167,45 @@ public class EmulatorTests
         Assert.All(profiles, profile => Assert.Empty(profile.Quirks.DeleteGlobals));
 
         var engines = Catalog.LoadEngines(root);
-        Assert.Equal(13, engines.Count);
+        Assert.Equal(14, engines.Count);
         Assert.Equal("chromium", Assert.Single(engines, item => item.Id == "chromium-47").Kind);
         Assert.Equal("firefox", Assert.Single(engines, item => item.Id == "firefox-44").Kind);
+        Assert.Equal("webkit", Assert.Single(engines, item => item.Id == "webkit-538").Kind);
         Assert.DoesNotContain(engines, item => item.Kind == "electron");
+        Assert.Equal(["playready"], Assert.Single(profiles, profile => profile.Id == "tizen-2016").Drm);
+        Assert.Equal(["playready"], Assert.Single(profiles, profile => profile.Id == "tizen-2017").Drm);
+        Assert.All(profiles.Where(profile => profile.Id is not "tizen-2016" and not "tizen-2017"), profile =>
+            Assert.Equal(["playready", "widevine"], profile.Drm));
+        Assert.Equal(
+            "tryb zgodności · WebKit 538.1 · avplay",
+            Catalog.CompatibilityLine(Assert.Single(profiles, profile => profile.Id == "tizen-2016"), Assert.Single(engines, item => item.Id == "webkit-538")));
+        Assert.Equal(
+            "tryb zgodności · Firefox 44 · edge",
+            Catalog.CompatibilityLine(Assert.Single(profiles, profile => profile.Id == "panasonic-2016"), Assert.Single(engines, item => item.Id == "firefox-44")));
         foreach (var profile in profiles)
         {
             var built = Assert.Single(engines, item => item.Id == profile.Engine);
-            Assert.Equal(profile.Engine == "firefox-44" ? "firefox" : "chromium", built.Kind);
-            Assert.NotNull(Catalog.LocateEngine(root, built));
+            var expectedKind = profile.Engine switch
+            {
+                "firefox-44" => "firefox",
+                "webkit-538" => "webkit",
+                _ => "chromium"
+            };
+            Assert.Equal(expectedKind, built.Kind);
+            var located = Catalog.LocateEngine(root, built);
+            if (expectedKind == "webkit")
+            {
+                if (located is not null)
+                    Assert.EndsWith("tv-webkit.exe", located, StringComparison.OrdinalIgnoreCase);
+            }
+            else
+            {
+                Assert.NotNull(located);
+            }
+
             var expectedMilestone = profile.Id switch
             {
+                "tizen-2016" => 538,
                 "tizen-2017" or "smartcast-47" or "sony-vewd-47" => 47,
                 "webos-4" or "wip-hbbtv-2" => 53,
                 "tizen-2018" or "smartcast-56" => 56,
@@ -200,6 +229,7 @@ public class EmulatorTests
             var json = File.ReadAllText(file);
             Assert.Contains("\"memoryMb\"", json, StringComparison.Ordinal);
             Assert.Contains("\"cpuPercent\"", json, StringComparison.Ordinal);
+            Assert.Contains("\"drm\"", json, StringComparison.Ordinal);
         }
     }
 
@@ -320,6 +350,23 @@ public class EmulatorTests
             @"C:\data dir",
             "/player/index.html?x=1#home");
         Assert.Equal("http://127.0.0.1:47911/player/index.html?x=1#home", firefoxHosted[^1]);
+        var webkit = SessionPlanner.Arguments(
+            new EngineBuild { Kind = "webkit", Milestone = 538 },
+            profile,
+            new PixelRect(10, 20, 1600, 900),
+            47911,
+            @"C:\data dir",
+            "/player/index.html?x=1#home",
+            debug: true);
+        Assert.Contains("--geometry=10,20,1600,900", webkit);
+        Assert.Contains("--scale=0.8333", webkit);
+        Assert.Contains("--user-agent=TestAgent/1", webkit);
+        Assert.Contains(@"--user-data-dir=C:\data dir", webkit);
+        Assert.DoesNotContain(webkit, argument => argument.Contains("no-sandbox", StringComparison.Ordinal));
+        Assert.DoesNotContain(webkit, argument => argument.Contains("remote-debugging-port", StringComparison.Ordinal));
+        Assert.DoesNotContain(webkit, argument => argument.StartsWith("--app=", StringComparison.Ordinal));
+        Assert.Equal("http://127.0.0.1:47911/player/index.html?x=1#home", webkit[^1]);
+        Assert.False(SessionPlanner.UsesBootGate(new EngineBuild { Kind = "webkit" }));
     }
 
     [Fact]
@@ -391,6 +438,7 @@ public class EmulatorTests
         Assert.Contains("hello", html);
         Assert.Contains("\"platform\":\"tizen\"", compact);
         Assert.Contains("\"player\":\"avplay\"", compact);
+        Assert.Contains("\"drm\":[\"playready\"]", compact);
         Assert.Contains("\"platformVersion\":\"3.0\"", compact);
         Assert.Contains("\"videoComposition\":\"colorKey\"", compact);
         Assert.Contains("\"id\":\"com.example\"", compact);

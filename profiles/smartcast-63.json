@@ -4,6 +4,7 @@
   "platform": "smartcast",
   "engine": "chromium-63",
   "player": "edge",
+  "drm": ["playready", "widevine"],
   "userAgent": "Mozilla/5.0 (X11; Linux armv7l) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36 CrKey/1.28.100000 VIZIO-DTV/V1.0 (Vizio, M55-D0, wired)",
   "viewport": { "width": 1920, "height": 1080 },
   "platformVersion": "2018",

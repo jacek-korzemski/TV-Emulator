@@ -12,8 +12,9 @@ A short public overview lives at <https://jacek-korzemski.github.io/TV-Emulator/
 
 ## What it emulates
 
-| Profile | Chromium | Picture |
+| Profile | Engine | Picture |
 | --- | --- | --- |
+| Tizen 2.4 (2016) | WebKit 538.1 | avplay |
 | Tizen 3.0 (2017) | 47 | avplay |
 | Tizen 4.0 (2018) | 56 | avplay |
 | Tizen 5.0 (2019) | 63 | avplay |
@@ -34,12 +35,12 @@ A short public overview lives at <https://jacek-korzemski.github.io/TV-Emulator/
 
 The page runs in that pinned browser, with a shim for that profile's device API (`tizen`, `webapis`, `webOS`, and the other profile globals) plus the remote key codes.
 
-`edge` means the picture is the WebView2 plane under the page. `page` means the page's own engine plays it. Titan OS still runs the page in Chrome for Testing 122, but that build has no Widevine CDM, so the picture goes through the Edge plane like the older Chromium sets. Public Chromium snapshots still have no H.264 and no Widevine, so VIDAA U6 and VIDAA 9 stay on `edge` even though those generations' Chrome is newer. Tizen 9.0 is Chrome 120 and still plays through avplay. Fire TV (2025) runs the page in the same Chrome 122 as Titan OS, recognizes the set from an `AmazonWebAppPlatform` user agent, and uses Back as keyCode 4. Its picture stays on the Edge plane. my Home Screen from 2016 is Firefox 44 (Firefox OS 2.5). That build has no Widevine CDM, so the picture uses the Edge plane. It also has no Chrome DevTools Protocol, so the live console, network, and memory tabs stay empty; the session log still works. Vewd is Chromium 47 with an OMI user agent. The Vewd TV binary is not public.
+`edge` means the picture is the WebView2 plane under the page. `page` means the page's own engine plays it. Titan OS still runs the page in Chrome for Testing 122, but that build has no Widevine CDM, so the picture goes through the Edge plane like the older Chromium sets. Public Chromium snapshots still have no H.264 and no Widevine, so VIDAA U6 and VIDAA 9 stay on `edge` even though those generations' Chrome is newer. Tizen 9.0 is Chrome 120 and still plays through avplay. Fire TV (2025) runs the page in the same Chrome 122 as Titan OS, recognizes the set from an `AmazonWebAppPlatform` user agent, and uses Back as keyCode 4. Its picture stays on the Edge plane. my Home Screen from 2016 is Firefox 44 (Firefox OS 2.5). That build has no Widevine CDM, so the picture uses the Edge plane. It also has no Chrome DevTools Protocol, so the live console, network, and memory tabs stay empty; the session log still works. Tizen 2.4 (2016) runs the page in QtWebKit 5.5 (AppleWebKit/538.1), the WebKit that generation shipped. The host is a frameless window with no toolbar and no infobars. It also has no Chrome DevTools Protocol, so the live preview stays empty; `console` lines from the page still land in the session log. Vewd is Chromium 47 with an OMI user agent. The Vewd TV binary is not public.
 
 Video does not play inside that old Chromium. Those builds lack the codecs and DRM a TV app expects.
 
-- **Tizen is Chromium plus avplay.** `webapis.avplay` is the native player on Tizen. Calls are forwarded to a WebView2 window (current Edge) behind the page. Edge has H.264, AAC, and PlayReady, so the video plane can play a clear or PlayReady DASH stream. The page punches a key color and the video shows through, the same idea as a TV video layer under the HTML.
-- **webOS is Chromium plus Edge.** webOS 4 plays in the HTML engine with Widevine, not avplay. Chromium 53 has no Widevine CDM and no H.264. The page still picks variants and downloads segments. Edge owns the Widevine session and the decoder. The video element in the old page is only a clock. PlayReady is the Tizen path and is not used here.
+- **Tizen is the page engine plus avplay.** `webapis.avplay` is the native player on Tizen. Calls are forwarded to a WebView2 window (current Edge) behind the page. Edge has H.264, AAC, Widevine, and PlayReady. Tizen 2.4 and 3.0 play clear and PlayReady DASH through avplay. Tizen 4.0 and later also play Widevine through avplay (`WIDEVINE_CDM`), and a page that uses HTML5 video with EME gets the same Widevine and PlayReady session on the Edge plane. The page punches a key color and the video shows through, the same idea as a TV video layer under the HTML.
+- **webOS, VIDAA, SmartCast, Saphi, Titan, Fire TV, Vewd, and my Home Screen use the page engine plus Edge.** Those profiles play in the HTML engine. The old browser has no CDM and no H.264. The page still picks variants and downloads segments. Edge owns the Widevine or PlayReady session and the decoder. The video element in the old page is only a clock. Both DRM systems are available on every one of these profiles.
 
 Processor and memory caps are optional and stored on this PC. The profile files leave them empty. **Moc telewizora**, under the profile list, applies a cap to the browser process only. The video plane is not capped.
 
@@ -72,7 +73,7 @@ powershell -ExecutionPolicy Bypass -File tools\fetch-engines.ps1
 
 This takes a while. The script prints `GET` while downloading, `UNZIP` while unpacking, and `READY` when that browser is already on disk. The last line should be `FETCH_DONE`.
 
-Television profiles use only the `chromium-*` browsers.
+Television profiles use the `chromium-*`, `chrome-*`, `firefox-*`, and `webkit-*` browsers. The WebKit host is not a public browser build. The workflow **Build WebKit host** publishes `webkit-538-win32.zip` on the `webkit-host-v1` release, and this script downloads that zip.
 
 5. Start the program:
 
@@ -98,13 +99,13 @@ The script writes `dist\TvEmulator-portable\`. Copy that whole folder to the USB
 
 `TvEmulator.exe` by itself is not enough. The folder next to it has to contain `profiles`, `shims`, `debug-ui`, `samples`, and `engines` (including the unpacked browsers). The first launch unpacks a few native libraries into the computer's temporary folder. The browsers stay in `engines\`.
 
-`-SkipEngines` leaves the browsers out of the copy. The package then only has `engines\builds.json`. Run `fetch-engines.ps1` on the build PC and publish again, or copy the `chromium-*`, `chrome-*`, and `firefox-*` folders into `engines\` yourself.
+`-SkipEngines` leaves the browsers out of the copy. The package then only has `engines\builds.json`. Run `fetch-engines.ps1` on the build PC and publish again, or copy the `chromium-*`, `chrome-*`, `firefox-*`, and `webkit-*` folders into `engines\` yourself.
 
 Settings and browser profiles for this package are stored in `data\` beside the exe. `dotnet run` from the repository still uses `%LOCALAPPDATA%\TvEmulator`. Chromium's profile on the stick is slower than on an internal disk. That is the cost of not leaving it on the host PC.
 
 ## Settings window
 
-- **TV profile.** The name and year are on the first line. Under that: the Chromium version and the playback method, `avplay` on Tizen, `edge` on webOS.
+- **TV profile.** The name and year are on the first line. Under that: the engine and the playback method, `avplay` on Tizen, `edge` on webOS.
 - **App.** A folder that contains `index.html`, or an address starting with `http://` or `https://`. **Browse** picks a folder.
 - **Monitor.** The screen for the 16:9 picture. With two monitors, pick the one you are looking at.
 - **Settings (Ustawienia).** Saves a default app, a folder or an `http(s)` address, and fills it in at every start. Uncheck TV profiles you do not use and they leave the profile list. New profiles stay visible until you hide them. Both live in `%LOCALAPPDATA%\TvEmulator\settings.json` when you start from this repository, and in `data\settings.json` beside `TvEmulator.exe` in the portable folder. Leave at least one profile visible.

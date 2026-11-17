@@ -76,6 +76,46 @@
     } catch (ignore) {}
   }
 
+  // Missing list means an older injected profile: both systems stay available.
+  // An explicit list is what the set reports. Tizen 2.4 and 3.0 are PlayReady only.
+  function profileHasDrm(kind) {
+    var list = profile.drm;
+    var i;
+    if (!list) {
+      return true;
+    }
+    for (i = 0; i < list.length; i++) {
+      if (list[i] === kind) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function avplayDrmKind(drmType) {
+    var name = String(drmType || "").toUpperCase();
+    if (name === "PLAYREADY") {
+      return "playready";
+    }
+    if (name.indexOf("WIDEVINE") === 0) {
+      return "widevine";
+    }
+    return "";
+  }
+
+  // Tizen 4.0 and later run HTML5 EME beside AVPlay. 2.4 and 3.0 stay on AVPlay.
+  function tizenHtmlPlayback() {
+    var version = parseFloat(profile.platformVersion);
+    return profile.platform === "tizen" && profile.player === "avplay" && !isNaN(version) && version >= 4;
+  }
+
+  function wantsEdgePlayback() {
+    if (tizenHtmlPlayback()) {
+      return true;
+    }
+    return profile.player === "edge" && profile.platform !== "tizen" && profile.platform !== "hbbtv";
+  }
+
   try {
     boot();
   } catch (err) {
@@ -115,7 +155,7 @@
     } else if (profile.platform === "sony") {
       installSony();
     }
-    if (profile.player === "edge" && profile.platform !== "tizen" && profile.platform !== "hbbtv") {
+    if (wantsEdgePlayback()) {
       installEdgePlayback();
     }
     installCompareNotice();
@@ -1676,6 +1716,10 @@
       },
       setDrm: function (drmType, operation, data) {
         requireState("setDrm", ["IDLE", "READY", "PLAYING", "PAUSED"]);
+        var kind = avplayDrmKind(drmType);
+        if (kind && !profileHasDrm(kind)) {
+          throw new WebAPIException(0, "Not supported", "NotSupportedError");
+        }
         send({ cmd: "drm", drmType: String(drmType), operation: String(operation), data: data == null ? "" : String(data) });
         return "";
       },
@@ -2402,10 +2446,11 @@
   }
 
   /*
-   * HTML5 video with Widevine. The pinned Chromium often has neither a CDM
-   * nor H.264, so the page keeps choosing variants and downloading segments.
-   * The Edge plane owns the real Widevine session and the decoder. The page
-   * video is only a clock. Tizen stays on avplay. HbbTV uses video/broadcast.
+   * HTML5 video with Widevine and PlayReady. The pinned browser often has neither
+   * a CDM nor H.264, so the page keeps choosing variants and downloading segments.
+   * The Edge plane owns the real CDM session and the decoder. The page video is
+   * only a clock. Tizen 4.0 and later install this beside AVPlay. HbbTV uses
+   * video/broadcast.
    */
   function installEdgePlayback() {
     var keyColor = "#010001";
@@ -3376,7 +3421,13 @@
       }
 
       function isEdgeKeySystem(keySystem) {
-        return isWidevineKeySystem(keySystem) || isPlayReadyKeySystem(keySystem);
+        if (isWidevineKeySystem(keySystem)) {
+          return profileHasDrm("widevine");
+        }
+        if (isPlayReadyKeySystem(keySystem)) {
+          return profileHasDrm("playready");
+        }
+        return false;
       }
 
       defineValue(navigatorObject, "requestMediaKeySystemAccess", function (keySystem, configs) {
@@ -3746,8 +3797,8 @@
         os: titan ? "TitanOS" : "Saphi",
         browserEngine: "Chrome",
         supportUHD: product.uhd === true,
-        supportPlayready: false,
-        supportWidevine: true
+        supportPlayready: profileHasDrm("playready"),
+        supportWidevine: profileHasDrm("widevine")
       }
     };
   }

@@ -1,0 +1,32 @@
+name: Build WebKit host
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-2019
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build QtWebKit host
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File tools\webkit-host\build.ps1 -Zip dist\webkit-538-win32.zip
+
+      - name: Publish release asset
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Continue'
+          gh release view webkit-host-v1 --json tagName
+          if ($LASTEXITCODE -ne 0) {
+            gh release create webkit-host-v1 --title "QtWebKit 5.5 host" --notes "tv-webkit.exe for the Tizen 2.4 profile. QtWebKit 5.5.1 (AppleWebKit/538.1), Win32, with OpenSSL 1.0.2."
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          gh release upload webkit-host-v1 dist\webkit-538-win32.zip --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

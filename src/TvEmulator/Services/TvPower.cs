@@ -15,7 +15,9 @@ public static class TvPower
 
     public static double DesktopGhz(EngineBuild engine)
     {
-        if (string.Equals(engine.Kind, "firefox", StringComparison.OrdinalIgnoreCase) || engine.Milestone <= 49)
+        if (string.Equals(engine.Kind, "firefox", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(engine.Kind, "webkit", StringComparison.OrdinalIgnoreCase)
+            || engine.Milestone <= 49)
             return 0.45;
         if (engine.Milestone <= 56)
             return 0.55;

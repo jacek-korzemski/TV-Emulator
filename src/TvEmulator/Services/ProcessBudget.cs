@@ -47,6 +47,12 @@ public static class ProcessBudget
         }
     }
 
+    public static void Attach(EngineJob job, Process process)
+    {
+        if (!AssignProcessToJobObject(job.Handle, process.Handle))
+            throw Fail("Nie udało się objąć silnika limitem");
+    }
+
     public static Process Start(
         string exe,
         IReadOnlyList<string> arguments,
@@ -351,6 +357,9 @@ public static class ProcessBudget
         public int ProcessId;
         public int ThreadId;
     }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool AssignProcessToJobObject(IntPtr job, IntPtr process);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr CreateJobObject(IntPtr attributes, IntPtr name);

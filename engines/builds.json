@@ -96,6 +96,15 @@
     "args": ["--no-sandbox", "--disable-gpu", "--no-proxy-server"]
   },
   {
+    "id": "webkit-538",
+    "kind": "webkit",
+    "milestone": 538,
+    "revision": 5381,
+    "versionLabel": "QtWebKit 5.5.1 (AppleWebKit/538.1)",
+    "archive": "https://github.com/jacek-korzemski/TV-Emulator/releases/download/webkit-host-v1/webkit-538-win32.zip",
+    "args": []
+  },
+  {
     "id": "firefox-44",
     "kind": "firefox",
     "milestone": 44,

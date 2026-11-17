@@ -8,6 +8,12 @@ logs/*
 engines/chromium-*/
 engines/chrome-*/
 engines/firefox-*/
+engines/webkit-*/
+tools/webkit-host/stage/
+tools/webkit-host/dist/
+tools/webkit-host/openssl/
+tools/webkit-host/*.zip
+tools/webkit-host/*.exe
 engines/electron-*/
 engines/downloads/
 engines/spike-results.json

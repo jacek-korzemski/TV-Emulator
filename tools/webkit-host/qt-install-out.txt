@@ -1,0 +1,6 @@
+IFW Version: "2.0.2"
+Build date: "Oct  2 2015"
+Installer Framework SHA1: "9cdcd84"
+[0] Warning: Could not create lock file 'G:/projekty/TV-Emulator/tools/webkit-host/lockmyApp1234865.lock': Proces nie mo¿e uzyskaæ dostêpu do pliku, poniewa¿ jest on u¿ywany przez inny proces.
+ (0x00000020)
+[35] created information message box AlreadyRunning: 'Waiting for qt-opensource-windows-x86-mingw492-5', Another qt-opensource-windows-x86-mingw492-5 instance is already running. Wait until it finishes, close it, or restart your system.

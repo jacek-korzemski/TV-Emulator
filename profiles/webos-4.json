@@ -4,6 +4,7 @@
   "platform": "webos",
   "engine": "chromium-53",
   "player": "edge",
+  "drm": ["playready", "widevine"],
   "userAgent": "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.34 Safari/537.36 WebAppManager",
   "viewport": { "width": 1920, "height": 1080 },
   "platformVersion": "4.0",

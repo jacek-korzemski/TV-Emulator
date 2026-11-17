@@ -4,6 +4,7 @@
   "platform": "panasonic",
   "engine": "firefox-44",
   "player": "edge",
+  "drm": ["playready", "widevine"],
   "userAgent": "Mozilla/5.0 (Linux; U; Viera; rv:44.0) Gecko/20100101 Firefox/44.0 Panasonic-Viera/TX-65DX900",
   "viewport": { "width": 1920, "height": 1080 },
   "platformVersion": "2.5",

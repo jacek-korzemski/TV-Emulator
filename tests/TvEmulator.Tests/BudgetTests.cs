@@ -24,6 +24,7 @@ public class BudgetTests
     public void DesktopGhzFollowsTheEngine()
     {
         Assert.Equal(0.45, TvPower.DesktopGhz(new EngineBuild { Kind = "firefox", Milestone = 44 }));
+        Assert.Equal(0.45, TvPower.DesktopGhz(new EngineBuild { Kind = "webkit", Milestone = 538 }));
         Assert.Equal(0.55, TvPower.DesktopGhz(new EngineBuild { Milestone = 56 }));
         Assert.Equal(0.70, TvPower.DesktopGhz(new EngineBuild { Milestone = 63 }));
         Assert.Equal(1.30, TvPower.DesktopGhz(new EngineBuild { Milestone = 88 }));

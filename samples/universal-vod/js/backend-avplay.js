@@ -88,6 +88,11 @@ function createAvplayBackend(hooks) {
             LicenseServer: item.license
           }));
         }
+        if (item.drm === "widevine" && item.license) {
+          webapis.avplay.setDrm("WIDEVINE_CDM", "SetProperties", JSON.stringify({
+            LicenseServer: item.license
+          }));
+        }
         webapis.avplay.prepareAsync(function () {
           if (gen !== generation) {
             return;
