@@ -1,6 +1,18 @@
 {
   "entries": [
     {
+      "date": "2026-11-17",
+      "title": "Tizen 2.4 and DRM per television",
+      "items": [
+        "Tizen 2.4 (2016) is in the profile list. The page runs in a frameless QtWebKit 5.5 window (AppleWebKit/538.1), and the picture goes through avplay.",
+        "That host has no Chrome DevTools Protocol, so the live preview stays empty. Lines the page writes with console still land in the session log.",
+        "Each television now reports its own DRM. Tizen 2.4 and 3.0 offer PlayReady only. Asking avplay or EME for Widevine on those sets is not supported.",
+        "From Tizen 4.0 on, avplay also plays Widevine. HTML5 video on those sets gets Widevine and PlayReady on the Edge plane, beside avplay.",
+        "webOS, VIDAA, SmartCast, Saphi, Titan OS, Fire TV, Vewd, and my Home Screen report both systems. The sample catalog leaves a title visible but marked unavailable when the open set does not list that DRM. HbbTV still opens the stream through video/broadcast.",
+        "The line under the profile list names WebKit, Firefox, or Chromium, then the player. Fetching engines also downloads the WebKit host."
+      ]
+    },
+    {
       "date": "2026-11-12",
       "title": "Compare two versions of an app",
       "items": [
